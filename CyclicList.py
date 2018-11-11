@@ -1,9 +1,8 @@
 class cyclicList:
-    __m_list = []
-    __m_listSize = 0
 
     def __init__(self, size):
-        self.m_listSize = size
+        self.__m_list = []
+        self.__m_listSize = size
 
     def push_front(self,Mat):
         self.__m_list.insert(0,Mat)

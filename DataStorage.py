@@ -1,3 +1,5 @@
+import datetime
+import cv2
 import CyclicList
 
 class PipcoDaten:
@@ -15,10 +17,10 @@ class PipcoDaten:
             self.__m_instance = self
 
     @staticmethod
-    def getInstance(self):
-        if self.__m_instance is None:
-            self.__m_instance = PipcoDaten()
-        return self.__m_instance
+    def getInstance():
+        if PipcoDaten.__m_instance is None:
+            PipcoDaten.__m_instance = PipcoDaten()
+        return PipcoDaten.__m_instance
 
 #   addImage greift auf die Funktion push_front aus CyclicList zu.
     # Die ältesten Bilder automatisch gelöscht
@@ -39,9 +41,15 @@ class PipcoDaten:
     def getMails(self):
         return self.__m_emails
 
+    def set_image(self, image):
+        self.__m_image = image
+
+    def get_image(self):
+        return self.__m_image
+
     def addLog(self, log):
-        self.m_log.insert(0, log)
+        self.__m_log.insert(0, log)
 
     def removeLog(self, log):
-        PipcoDaten.m_log.remove(log)
+        self.__m_log.remove(log)
 

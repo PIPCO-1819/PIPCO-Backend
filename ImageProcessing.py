@@ -1,28 +1,34 @@
 import cv2
 import DataStorage
+from threading import Thread
 
-class ImageProcessing:
-    m_dataBase = DataStorage.PipcoDaten.getInstance(DataStorage.PipcoDaten)
-#    m_stream = "http://192.168.0.35/cgi-bin/videostream.cgi?user=admin&pwd=admin"
-    m_stream = "http://eckardtscholz.viewnetcam.com/nphMotionJpeg?Resolution=640x480"
+class ImageProcessing(Thread):
+    m_dataBase = DataStorage.PipcoDaten.getInstance()
     m_exit = False
     m_changed = False
 
-    def __init__(self):
+    def __init__(self, debug):
+        if debug:
+            self.m_stream = "http://eckardtscholz.viewnetcam.com/nphMotionJpeg?Resolution=640x480"
+        else:
+            self.m_stream = "http://192.168.0.35/cgi-bin/videostream.cgi?user=admin&pwd=admin"
+
         print("init")
+        super(ImageProcessing, self).__init__()
 
 #   Äußere Schleife um run mit neuen Parametern auszuführen
-    def run_manager(self):
-        while True:
+
+    def run(self):
+        while(True):
             self.m_changed = False
-            self.run()
+            self.run_imgprocessing()
 
             if self.m_exit:
                 self.m_exit = False
                 break
 
 #   Eigentliche Bildverarbeitung
-    def run(self):
+    def run_imgprocessing(self):
         cap = cv2.VideoCapture(self.m_stream)
         print("Enter Loop")
 
@@ -35,29 +41,29 @@ class ImageProcessing:
                 self.m_dataBase.addImage(frame)
 
                 if motion:
-                    self.notify(ImageProcessing.m_dataBase.getMails())
+                    self.notify(self.m_dataBase.getMails())
 
-                cv2.imshow('Video',frame)
+            ret2, jpg = cv2.imencode('.jpg', frame)
+            self.m_dataBase.set_image(jpg)
+
             cv2.waitKey(40)
 
         #   verlässt Funktion um run mit den neuen Parametern aufzurufen
             if self.m_changed:
-                return;
+                return
 
         #    print(datetime.datetime.now())
 
     def checkImage(self,image):
         return False
 
-    def notify(self,mails):
+    def notify(self, mails):
         for mail in mails:
             return
 
-    def setStream(self,stream):
+    def setStream(self, stream):
         self.m_stream = stream
         self.m_changed = True
 
-
-ImageProcessing().run_manager()
 
 
