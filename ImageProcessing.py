@@ -2,64 +2,62 @@ import cv2
 import DataStorage
 
 class ImageProcessing:
-    m_dataBase = DataStorage.PipcoDaten.getInstance()
-    m_stream = "http://192.168.0.35/cgi-bin/videostream.cgi?user=admin&pwd=admin"
+    m_dataBase = DataStorage.PipcoDaten.getInstance(DataStorage.PipcoDaten)
+#    m_stream = "http://192.168.0.35/cgi-bin/videostream.cgi?user=admin&pwd=admin"
+    m_stream = "http://eckardtscholz.viewnetcam.com/nphMotionJpeg?Resolution=640x480"
     m_exit = False
     m_changed = False
 
-#   Äußere Schleife um run mit neuen Parametern auszuführen
-    @staticmethod
-    def run_manager(self):
-        while(True):
-            ImageProcessing.m_changed = False
-            ImageProcessing.run()
+    def __init__(self):
+        print("init")
 
-            if ImageProcessing.m_exit:
-                ImageProcessing.m_exit = False
+#   Äußere Schleife um run mit neuen Parametern auszuführen
+    def run_manager(self):
+        while True:
+            self.m_changed = False
+            self.run()
+
+            if self.m_exit:
+                self.m_exit = False
                 break
 
 #   Eigentliche Bildverarbeitung
     def run(self):
-        cap = cv2.VideoCapture(ImageProcessing.m_stream)
+        cap = cv2.VideoCapture(self.m_stream)
+        print("Enter Loop")
 
-        while(True):
+        while True:
             ret, frame = cap.read()
         #   (read) If no frames has been grabbed (camera has been disconnected, or there are no more frames in video file),
         #   the methods return false and the functions return NULL pointer.
             if ret:
-                motion = ImageProcessing.checkImage(frame)
-                ImageProcessing.m_dataBase.addImage(frame)
+                motion = self.checkImage(frame)
+                self.m_dataBase.addImage(frame)
 
                 if motion:
-                    ImageProcessing.notify(ImageProcessing.m_dataBase.getMails())
+                    self.notify(ImageProcessing.m_dataBase.getMails())
 
                 cv2.imshow('Video',frame)
             cv2.waitKey(40)
 
         #   verlässt Funktion um run mit den neuen Parametern aufzurufen
-            if ImageProcessing.m_changed:
+            if self.m_changed:
                 return;
 
         #    print(datetime.datetime.now())
 
     def checkImage(self,image):
-        if image:
-            return True
-        else:
-            return False
+        return False
 
     def notify(self,mails):
         for mail in mails:
             return
 
     def setStream(self,stream):
-        ImageProcessing.m_stream = stream
-        ImageProcessing.m_changed = True
+        self.m_stream = stream
+        self.m_changed = True
 
 
-
-process = ImageProcessing()
-
-process.run_manager()
+ImageProcessing().run_manager()
 
 
