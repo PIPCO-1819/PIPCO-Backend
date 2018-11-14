@@ -2,14 +2,16 @@ import cv2
 import DataStorage
 from threading import Thread
 
+
 class ImageProcessing(Thread):
     m_dataBase = DataStorage.PipcoDaten.getInstance()
     m_exit = False
     m_changed = False
 
     def __init__(self, debug):
+        self.__m_debug = debug
         if debug:
-            self.m_stream = "http://eckardtscholz.viewnetcam.com/nphMotionJpeg?Resolution=640x480"
+            self.m_stream = "videosamples/sample2.mkv"
         else:
             self.m_stream = "http://192.168.0.35/cgi-bin/videostream.cgi?user=admin&pwd=admin"
 
@@ -43,8 +45,12 @@ class ImageProcessing(Thread):
                 if motion:
                     self.notify(self.m_dataBase.getMails())
 
-            ret2, jpg = cv2.imencode('.jpg', frame)
-            self.m_dataBase.set_image(jpg)
+                ret2, jpg = cv2.imencode('.jpg', frame)
+                self.m_dataBase.set_image(jpg)
+
+            elif self.__m_debug:
+                #if video ist playing, reset video
+                cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
 
             cv2.waitKey(40)
 
