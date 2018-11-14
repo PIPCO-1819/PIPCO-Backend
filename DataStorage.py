@@ -82,7 +82,7 @@ class AutoIdDict(OrderedDict):
 
     def append(self, val):
         if val in self.values():
-            return False
+            return -1
         for idx, elem in enumerate(sorted(self.keys())):
             if idx < elem:
                 self[idx] = val

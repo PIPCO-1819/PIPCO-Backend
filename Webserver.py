@@ -39,11 +39,10 @@ class Webserver:
             return Webserver.ERROR
 
     def add_mail(self):
-        self.data.addLog()
         try:
             mailaddress = request.values.get('mail')
             if mailaddress:
-                if self.data.addMail(mailaddress):
+                if self.data.addMail(mailaddress) != -1:
                     return "success"
             return Webserver.ERROR
         except Exception:
