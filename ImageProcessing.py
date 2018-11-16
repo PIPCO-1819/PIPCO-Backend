@@ -4,7 +4,7 @@ from threading import Thread
 
 
 class ImageProcessing(Thread):
-    m_dataBase = DataStorage.PipcoDaten.getInstance()
+    m_dataBase = DataStorage.PipcoDaten.get_instance()
     m_exit = False
     m_changed = False
 
@@ -13,13 +13,12 @@ class ImageProcessing(Thread):
         if debug:
             self.m_stream = "videosamples/sample2.mkv"
         else:
-            self.m_stream = "http://192.168.0.35/cgi-bin/videostream.cgi?user=admin&pwd=admin"
+            self.m_stream = ImageProcessing.m_dataBase.get_settings().streamaddress
 
         print("init")
         super(ImageProcessing, self).__init__()
 
 #   Äußere Schleife um run mit neuen Parametern auszuführen
-
     def run(self):
         while(True):
             self.m_changed = False
@@ -40,10 +39,10 @@ class ImageProcessing(Thread):
         #   the methods return false and the functions return NULL pointer.
             if ret:
                 motion = self.checkImage(frame)
-                self.m_dataBase.addImage(frame)
+                self.m_dataBase.add_image(frame)
 
                 if motion:
-                    self.notify(self.m_dataBase.getMails())
+                    self.notify(self.m_dataBase.get_mails())
 
                 ret2, jpg = cv2.imencode('.jpg', frame)
                 self.m_dataBase.set_image(jpg)
