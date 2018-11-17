@@ -2,6 +2,7 @@ from flask import Flask, Response, request, send_from_directory
 from DataStorage import *
 import json
 import base64
+from flask_cors import CORS
 
 # https://github.com/desertfury/flask-opencv-streaming
 
@@ -20,7 +21,7 @@ class Webserver:
         self.app.add_url_rule('/login', 'check_login', self.check_login, methods=["POST"])
         self.app.add_url_rule('/config', 'change_get_config', self.change_get_config, methods=["POST", "GET"])
         self.app.add_url_rule('/recording/<path:filename>', 'recording', self.get_recording, methods=["GET"])
-
+        CORS(self.app)
         self.data = PipcoDaten.get_instance()
 
     def gen(self):

@@ -77,10 +77,10 @@ class PipcoDaten:
             self.__m_settings.sensitivity = float(sensitivity)
         if brightness:
             ret["brightness"] = brightness
-            self.__m_settings.sensitivity = float(brightness)
+            self.__m_settings.brightness = float(brightness)
         if contrast:
             ret["contrast"] = contrast
-            self.__m_settings.sensitivity = float(contrast)
+            self.__m_settings.contrast = float(contrast)
         if streamaddress:
             ret["streamaddress"] = streamaddress
             self.__m_settings.streamaddress = streamaddress
