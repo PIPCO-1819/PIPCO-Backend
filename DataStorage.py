@@ -28,7 +28,6 @@ class PipcoDaten:
                 self.__m_settings = Settings()
             self.__m_instance = self
             self.__m_image = None
-            self.__m_images = CyclicList.cyclicList(25)
             self.__m_user = USER
             self.__m_password = PASSWORD
 
@@ -37,16 +36,6 @@ class PipcoDaten:
         if PipcoDaten.__m_instance is None:
             PipcoDaten.__m_instance = PipcoDaten()
         return PipcoDaten.__m_instance
-
-#   addImage greift auf die Funktion push_front aus CyclicList zu.
-    # Die ältesten Bilder automatisch gelöscht
-    def add_image(self, image):
-        self.__m_images.push_front(image)
-
-#   getImages greift auf die Funktion getList aus CyclicList zu.
-    # Gibt die direkte Liste zurück. Sollte als const List betrachtet werden
-    def get_images(self):
-        return self.__m_images.getList()
 
     def toggle_mail_notify(self, id):
         state = not self.__m_emails[int(id)].notify
@@ -169,4 +158,3 @@ class Settings:
         self.streamaddress = streamaddress
         self.brightness = brightness
         self.contrast = contrast
-

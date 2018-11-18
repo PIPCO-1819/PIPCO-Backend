@@ -1,12 +1,15 @@
 import cv2
-import DataStorage
+from DataStorage import PipcoDaten
+import CyclicList
 from threading import Thread
 
 
 class ImageProcessing(Thread):
-    m_dataBase = DataStorage.PipcoDaten.get_instance()
+
+    m_dataBase = PipcoDaten.get_instance()
     m_exit = False
     m_changed = False
+    m_images = CyclicList.cyclicList(25)
 
     def __init__(self, debug):
         self.__m_debug = debug
@@ -20,7 +23,7 @@ class ImageProcessing(Thread):
 
 #   Äußere Schleife um run mit neuen Parametern auszuführen
     def run(self):
-        while(True):
+        while True:
             self.m_changed = False
             self.run_imgprocessing()
 
@@ -38,8 +41,9 @@ class ImageProcessing(Thread):
         #   (read) If no frames has been grabbed (camera has been disconnected, or there are no more frames in video file),
         #   the methods return false and the functions return NULL pointer.
             if ret:
-                motion = self.checkImage(frame)
-                self.m_dataBase.add_image(frame)
+                gray_image = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+                motion = self.check_image(gray_image)
+                self.push_front(gray_image)
 
                 if motion:
                     self.notify(self.m_dataBase.get_mails())
@@ -59,16 +63,37 @@ class ImageProcessing(Thread):
 
         #    print(datetime.datetime.now())
 
-    def checkImage(self,image):
+    def check_image(self,image):
+        old_image = self.m_images.get_last_image()
+        image = cv2.GaussianBlur(image, 21, 0)
+
+        if old_image is None:
+            old_image = image
+
+        delta_frame = cv2.absdiff(self.m_images.get_last_image(),image)
+
+        thresh_frame = cv2.threshold(delta_frame, 30, 255, cv2.THRESH_BINARY)[1]
+        thresh_frame = cv2.dilate(thresh_frame, None, iterations=2)
+
+        (_, cnts, _) = cv2.findContours(thresh_frame.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+        if len(cnts):
+            return True
+
         return False
 
     def notify(self, mails):
         for mail in mails:
-            return
+            return False
 
-    def setStream(self, stream):
+    def set_stream(self, stream):
         self.m_stream = stream
         self.m_changed = True
+
+    def push_front(self, image):
+        self.m_images.push_front(image)
+        self.m_dataBase.set_image(image)
+
 
 
 

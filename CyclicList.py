@@ -9,11 +9,18 @@ class cyclicList:
         while len(self.__m_list) > self.__m_listSize:
             self.__m_list.pop(self.__m_listSize)
 
-    def getList(self):
+    def get_list(self):
         return self.__m_list
 
-    def setListSize(self, int):
+    def set_list_size(self, int):
         self.__m_listSize(int)
 
-    def flushList(self):
+    def flush_list(self):
         self.__list.m_clear()
+
+#   returns the newest image
+    def get_last_image(self):
+        if self.__m_listSize != 0:
+            return self.__m_list[0]
+        else:
+            return None
