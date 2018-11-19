@@ -55,9 +55,10 @@ class Webserver:
     def delete_change_mail(self, mail_id):
         try:
             if request.method == 'DELETE':
-                return str(self.data.remove_mail(int(mail_id)))
+                return Response("{\"mail_id\": \"" + self.data.remove_mail(int(mail_id)) + "\"}", status=200, mimetype='application/json')
             else:
-                return str(self.data.toggle_mail_notify(mail_id))
+
+                return Response("{\"notify\": \"" + self.data.toggle_mail_notify(mail_id) + "\"}", status=200, mimetype='application/json')
         except Exception:
             return Webserver.ERROR
 
