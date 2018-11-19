@@ -1,4 +1,4 @@
-from flask import Flask, Response, request, send_from_directory
+from flask import Flask, Response, request, send_from_directory, jsonify
 from DataStorage import *
 import json
 import base64
@@ -37,37 +37,37 @@ class Webserver:
 
 
     def get_mails(self):
-        return json.dumps(list(self.data.get_mails().values()), cls=MessageEncoder)
+        return response(json.dumps(list(self.data.get_mails().values()), cls=MessageEncoder))
 
     def change_get_config(self):
         try:
             if request.method == 'POST':
-                sensitivity = request.values.get('sensitivity')
-                streamaddress = request.values.get('streamaddress')
-                brightness = request.values.get('brightness')
-                contrast = request.values.get('contrast')
-                return json.dumps(self.data.change_settings(sensitivity, brightness, contrast, streamaddress))
+                sensitivity = json.loads(request.data)['sensitivity']
+                streamaddress = json.loads(request.data)['streamaddress']
+                brightness = json.loads(request.data)['brightness']
+                contrast = json.loads(request.data)['contrast']
+                return response(json.dumps(self.data.change_settings(sensitivity, brightness, contrast, streamaddress)))
             else:
-                return json.dumps(self.data.get_settings(), cls=MessageEncoder)
+                return response(json.dumps(self.data.get_settings(), cls=MessageEncoder))
         except Exception:
             return Webserver.ERROR
 
     def delete_change_mail(self, mail_id):
         try:
             if request.method == 'DELETE':
-                return Response("{\"mail_id\": \"" + self.data.remove_mail(int(mail_id)) + "\"}", status=200, mimetype='application/json')
+                return jsonify(mail_id=self.data.remove_mail(int(mail_id)))
             else:
-                return Response("{\"notify\": \"" + str(self.data.toggle_mail_notify(mail_id)) + "\"}", status=200, mimetype='application/json')
+                return jsonify(notify=self.data.remove_mail(int(mail_id)))
         except Exception:
             return Webserver.ERROR
 
     def add_mail(self):
         try:
-            mailaddress = request.values.get('mail')
+            mailaddress = json.loads(request.data)['mail']
             if mailaddress:
                 ret = self.data.add_mail(mailaddress)
                 if ret != -1:
-                    return str(ret)
+                    return jsonify(mail_id=ret)
             return Webserver.ERROR
         except Exception:
             return Webserver.ERROR
@@ -77,7 +77,7 @@ class Webserver:
             user = json.loads(request.data)['user']
             password = json.loads(request.data)['password']
             if self.data.check_login(user, password):
-                return Response("{\"status\": \"OK\"}", status=200, mimetype='application/json')
+                return jsonify(status="OK")
             return Webserver.ERROR
         except Exception:
             return Webserver.ERROR
@@ -85,20 +85,23 @@ class Webserver:
     def delete_log(self, log_id):
         try:
             self.data.remove_log(int(log_id))
-            return log_id
+            return jsonify(log_id=log_id)
         except Exception:
             return Webserver.ERROR
 
     def get_logs(self,page_no, batch_size):
-        return json.dumps(list(self.data.get_log_page(page_no,batch_size).values()), cls=MessageEncoder)
+        return response(json.dumps(list(self.data.get_log_page(page_no,batch_size).values()), cls=MessageEncoder))
 
     def video_feed(self):
         if self.data.get_image() is not None:
-            print("return")
             return Response(self.gen(),
                             mimetype='multipart/x-mixed-replace; boundary=frame')
         return "no images available"
 
+def response(val):
+    return Response(response=val,
+             status=200,
+             mimetype="application/json")
 
 class MessageEncoder(json.JSONEncoder):
 
