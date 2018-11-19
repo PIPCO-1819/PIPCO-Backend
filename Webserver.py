@@ -57,8 +57,7 @@ class Webserver:
             if request.method == 'DELETE':
                 return Response("{\"mail_id\": \"" + self.data.remove_mail(int(mail_id)) + "\"}", status=200, mimetype='application/json')
             else:
-
-                return Response("{\"notify\": \"" + self.data.toggle_mail_notify(mail_id) + "\"}", status=200, mimetype='application/json')
+                return Response("{\"notify\": \"" + str(self.data.toggle_mail_notify(mail_id)) + "\"}", status=200, mimetype='application/json')
         except Exception:
             return Webserver.ERROR
 
