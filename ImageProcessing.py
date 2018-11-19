@@ -21,7 +21,7 @@ class ImageProcessing(Thread):
         print("init")
         super(ImageProcessing, self).__init__()
 
-#   Äußere Schleife um run mit neuen Parametern auszuführen
+#   Aeussere Schleife um run mit neuen Parametern auszufuehren
     def run(self):
         while True:
             self.m_changed = False
@@ -57,7 +57,7 @@ class ImageProcessing(Thread):
 
             cv2.waitKey(40)
 
-        #   verlässt Funktion um run mit den neuen Parametern aufzurufen
+        #   verlaesst Funktion um run mit den neuen Parametern aufzurufen
             if self.m_changed:
                 return
 

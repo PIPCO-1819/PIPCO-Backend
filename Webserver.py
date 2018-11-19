@@ -74,10 +74,10 @@ class Webserver:
 
     def check_login(self):
         try:
-            user = request.values.get('user')
-            password = request.values.get('password')
+            user = json.loads(request.data)['user']
+            password = json.loads(request.data)['password']
             if self.data.check_login(user, password):
-                return "OK"
+                return Response("{\"status\": \"OK\"}", status=200, mimetype='application/json')
             return Webserver.ERROR
         except Exception:
             return Webserver.ERROR

@@ -1,7 +1,7 @@
 from ImageProcessing import ImageProcessing
 from Webserver import Webserver
 
-__DEBUG__ = True
+__DEBUG__ = False
 
 
 class Main:
