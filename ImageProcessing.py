@@ -65,7 +65,8 @@ class ImageProcessing(Thread):
 
     def check_image(self,image):
         old_image = self.m_images.get_last_image()
-        image = cv2.GaussianBlur(image, 21, 0)
+        image = cv2.GaussianBlur(image, (21,21), 0)
+        self.push_front(image)
 
         if old_image is None:
             old_image = image
@@ -92,7 +93,6 @@ class ImageProcessing(Thread):
 
     def push_front(self, image):
         self.m_images.push_front(image)
-        self.m_dataBase.set_image(image)
 
 
 

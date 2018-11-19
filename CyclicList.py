@@ -20,7 +20,7 @@ class cyclicList:
 
 #   returns the newest image
     def get_last_image(self):
-        if self.__m_listSize != 0:
+        if len(self.__m_list) != 0:
             return self.__m_list[0]
         else:
             return None
