@@ -42,10 +42,11 @@ class Webserver:
     def change_get_config(self):
         try:
             if request.method == 'POST':
-                sensitivity = json.loads(request.data)['sensitivity']
-                streamaddress = json.loads(request.data)['streamaddress']
-                brightness = json.loads(request.data)['brightness']
-                contrast = json.loads(request.data)['contrast']
+                data = request.get_json()
+                sensitivity = data.get('sensitivity')
+                streamaddress = data.get('streamaddress')
+                brightness = data.get('brightness')
+                contrast = data.get('contrast')
                 return response(json.dumps(self.data.change_settings(sensitivity, brightness, contrast, streamaddress)))
             else:
                 return response(json.dumps(self.data.get_settings(), cls=MessageEncoder))
