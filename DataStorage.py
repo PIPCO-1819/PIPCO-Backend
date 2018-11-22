@@ -1,6 +1,8 @@
 import datetime
 import CyclicList
 import DataPersistence
+from RWLock import RWLock
+import copy
 
 USER = "user"
 PASSWORD = "geheim"
@@ -16,7 +18,9 @@ class PipcoDaten:
             raise Exception("Something fucked up - Trying to init second instance")
         else:
             self.m_data_persistence = DataPersistence.DataPersistence(self)
-
+            self.__m_emails_lock = RWLock()
+            self.__m_log_lock = RWLock()
+            self.__m_setting_lock = RWLock()
             self.__m_settings = self.m_data_persistence.load_settings()
             self.__m_emails = self.m_data_persistence.load_emails()
             self.__m_log = self.m_data_persistence.load_logs()
@@ -38,28 +42,41 @@ class PipcoDaten:
         return PipcoDaten.__m_instance
 
     def toggle_mail_notify(self, id):
+        self.__m_emails_lock.writer_acquire()
         state = not self.__m_emails[int(id)].notify
         self.__m_emails[int(id)].notify = state
         self.m_data_persistence.save_emails(self.__m_emails)
+        self.__m_emails_lock.writer_release()
         return state
 
     def add_mail(self, address):
+        self.__m_emails_lock.writer_acquire()
         ret = self.__m_emails.append(Mail(address))
         self.m_data_persistence.save_emails(self.__m_emails)
+        self.__m_emails_lock.writer_release()
         return ret
 
     def remove_mail(self, id):
+        self.__m_emails_lock.writer_acquire()
         self.__m_emails.__delitem__(id)
         self.m_data_persistence.save_emails(self.__m_emails)
+        self.__m_emails_lock.writer_release()
         return id
 
     def get_mails(self):
-        return self.__m_emails
+        self.__m_emails_lock.reader_acquire()
+        ret = copy.deepcopy(self.__m_emails)
+        self.__m_emails_lock.reader_release()
+        return ret
 
     def get_settings(self):
-        return self.__m_settings
+        self.__m_setting_lock.reader_acquire()
+        ret = copy.copy(self.__m_settings)
+        self.__m_setting_lock.reader_release()
+        return ret
 
     def change_settings(self, sensitivity, brightness, contrast, streamaddress):
+        self.__m_setting_lock.writer_acquire()
         ret = {}
         if sensitivity:
             ret["sensitivity"] = sensitivity
@@ -74,8 +91,8 @@ class PipcoDaten:
             ret["streamaddress"] = streamaddress
             self.__m_settings.streamaddress = streamaddress
         self.m_data_persistence.save_settings(self.__m_settings)
+        self.__m_setting_lock.writer_release()
         return ret
-
 
     def set_image(self, image):
         self.__m_image = image
@@ -83,29 +100,33 @@ class PipcoDaten:
     def get_image(self):
         return self.__m_image
 
-    def get_log(self):
-        return self.__m_log
-
     def get_log_page(self, page, batchsize):
+        self.__m_log_lock.reader_acquire()
         selected = {}
-        for idx, key in enumerate(sorted(self.__m_log.keys(), reverse=True)[int(page)*int(batchsize):]):
-            selected[key] = self.__m_log[key]
-            if int(batchsize)-1 == idx:
-                return selected
-        return selected
+        try:
+            for idx, key in enumerate(sorted(self.__m_log.keys(), reverse=True)[int(page)*int(batchsize):]):
+                selected[key] = copy.copy(self.__m_log[key])
+                if int(batchsize)-1 == idx:
+                    return selected
+            return selected
+        finally:
+            self.__m_log_lock.reader_release()
 
     def add_log(self):
+        self.__m_log_lock.writer_acquire()
         idx = self.__m_log.get_free_index()
         idx = self.__m_log.append(Log(idx))
         self.m_data_persistence.save_logs(self.__m_log)
+        self.__m_log_lock.writer_release()
         return idx
 
     def check_login(self, user, password):
         return self.__m_user == user and self.__m_password == password
 
     def remove_log(self, id):
+        self.__m_log_lock.writer_acquire()
         self.__m_log.__delitem__(id)
-        self.m_data_persistence.save_logs()
+        self.__m_log_lock.writer_release()
         return id
 
 class AutoIdDict(dict):
@@ -153,6 +174,7 @@ class Log:
 
 
 class Settings:
+
     def __init__(self, sensitivity=0.5, brightness=0.5, contrast=0.5, streamaddress=""):
         self.sensitivity = sensitivity
         self.streamaddress = streamaddress

@@ -2,7 +2,7 @@ import cv2
 from DataStorage import PipcoDaten
 import CyclicList
 from threading import Thread
-
+from MailClient import MailClient
 
 class ImageProcessing(Thread):
 
@@ -12,7 +12,9 @@ class ImageProcessing(Thread):
     m_images = CyclicList.cyclicList(25)
 
     def __init__(self, debug):
+        self.__m_run = True
         self.__m_debug = debug
+        self.__m_mailclient = MailClient(ImageProcessing.m_dataBase)
         if debug:
             self.m_stream = "videosamples/sample2.mkv"
         else:
@@ -21,9 +23,12 @@ class ImageProcessing(Thread):
         print("init")
         super(ImageProcessing, self).__init__()
 
+    def stop(self):
+        self.__m_run = False
+
 #   Aeussere Schleife um run mit neuen Parametern auszufuehren
     def run(self):
-        while True:
+        while self.__m_run:
             self.m_changed = False
             self.run_imgprocessing()
 
@@ -35,8 +40,7 @@ class ImageProcessing(Thread):
     def run_imgprocessing(self):
         cap = cv2.VideoCapture(self.m_stream)
         print("Enter Loop")
-
-        while True:
+        while self.__m_run:
             ret, frame = cap.read()
         #   (read) If no frames has been grabbed (camera has been disconnected, or there are no more frames in video file),
         #   the methods return false and the functions return NULL pointer.
@@ -46,7 +50,7 @@ class ImageProcessing(Thread):
                 self.push_front(gray_image)
 
                 if motion:
-                    self.notify(self.m_dataBase.get_mails())
+                    self.notify()
 
                 ret2, jpg = cv2.imencode('.jpg', frame)
                 self.m_dataBase.set_image(jpg)
@@ -83,9 +87,8 @@ class ImageProcessing(Thread):
 
         return False
 
-    def notify(self, mails):
-        for mail in mails:
-            return False
+    def notify(self):
+        self.__m_mailclient.notify_users()
 
     def set_stream(self, stream):
         self.m_stream = stream
