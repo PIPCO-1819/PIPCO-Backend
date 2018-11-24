@@ -50,7 +50,10 @@ class ImageProcessing(Thread):
         #   the methods return false and the functions return NULL pointer.
             if ret:
                 gray_image = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-                self.check_image(gray_image)
+                motion = self.check_image(gray_image)
+
+                if len(motion):
+                    cv2.drawContours(frame, motion, -1, (0,255,0), 3)
 
                 ret2, jpg = cv2.imencode('.jpg', frame)
                 self.m_dataBase.set_image(jpg)
@@ -73,7 +76,7 @@ class ImageProcessing(Thread):
         self.push_front(new_image)
 
         if old_image is None:
-            return False
+            return []
 
         delta_frame = cv2.absdiff(new_image,old_image)
         thresh_frame = cv2.threshold(delta_frame, 30, 255, cv2.THRESH_BINARY)[1]
@@ -88,9 +91,9 @@ class ImageProcessing(Thread):
             if self.compare_time():
                 self.notify()
             self.m_lastMotionTime = int(round(time.time()*1000))
-            return True
+            return cnts
 
-        return False
+        return []
 
 
     def notify(self):
