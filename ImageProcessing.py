@@ -1,4 +1,7 @@
+from datetime import date
+
 import cv2
+import time
 from DataStorage import PipcoDaten
 import CyclicList
 from threading import Thread
@@ -10,6 +13,7 @@ class ImageProcessing(Thread):
     m_exit = False
     m_changed = False
     m_images = CyclicList.cyclicList(25)
+    m_lastMotionTime = None
 
     def __init__(self, debug):
         self.__m_run = True
@@ -46,17 +50,13 @@ class ImageProcessing(Thread):
         #   the methods return false and the functions return NULL pointer.
             if ret:
                 gray_image = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-                motion = self.check_image(gray_image)
-                self.push_front(gray_image)
-
-                if motion:
-                    self.notify()
+                self.check_image(gray_image)
 
                 ret2, jpg = cv2.imencode('.jpg', frame)
                 self.m_dataBase.set_image(jpg)
 
             elif self.__m_debug:
-                #if video ist playing, reset video
+                # if video ist playing, reset video
                 cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
 
             cv2.waitKey(40)
@@ -69,26 +69,34 @@ class ImageProcessing(Thread):
 
     def check_image(self,image):
         old_image = self.m_images.get_last_image()
-        image = cv2.GaussianBlur(image, (21,21), 0)
-        self.push_front(image)
+        new_image = cv2.GaussianBlur(image,(21,21),0)
+        self.push_front(new_image)
 
         if old_image is None:
-            old_image = image
+            return False
 
-        delta_frame = cv2.absdiff(self.m_images.get_last_image(),image)
-
+        delta_frame = cv2.absdiff(new_image,old_image)
         thresh_frame = cv2.threshold(delta_frame, 30, 255, cv2.THRESH_BINARY)[1]
         thresh_frame = cv2.dilate(thresh_frame, None, iterations=2)
+
+#        ret2, jpg = cv2.imencode('.jpg', thresh_frame)
+ #       self.m_dataBase.set_image(jpg)
 
         (_, cnts, _) = cv2.findContours(thresh_frame.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
         if len(cnts):
+            if self.compare_time():
+                self.notify()
+            self.m_lastMotionTime = int(round(time.time()*1000))
             return True
 
         return False
 
+
     def notify(self):
-        self.__m_mailclient.notify_users()
+        print("Motion detected")
+        #self.__m_mailclient.notify_users()
+
 
     def set_stream(self, stream):
         self.m_stream = stream
@@ -96,6 +104,18 @@ class ImageProcessing(Thread):
 
     def push_front(self, image):
         self.m_images.push_front(image)
+
+#   dauer von 5 Sekunden abgelaufen
+    def compare_time(self):
+        now = int(round(time.time()*1000))
+
+        if self.m_lastMotionTime is not None:
+            # vergleich ob 5 Sekunden abgelaufen sind
+            delta = now-self.m_lastMotionTime
+            return (now-self.m_lastMotionTime) >= 1000*7
+
+        return True
+
 
 
 
