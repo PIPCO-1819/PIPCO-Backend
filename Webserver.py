@@ -3,7 +3,8 @@ from DataStorage import *
 import json
 import base64
 from flask_cors import CORS
-
+import time
+from ImageProcessing import FPS
 # https://github.com/desertfury/flask-opencv-streaming
 
 class Webserver:
@@ -25,10 +26,8 @@ class Webserver:
         self.data = PipcoDaten.get_instance()
 
     def gen(self):
-        old = self.data.get_image().tobytes()
         while True:
-            if old != self.data.get_image().tobytes:
-                old = self.data.get_image().tobytes
+                time.sleep(1/FPS)
                 yield (b'--frame\r\n'
                        b'Content-Type: image/jpeg\r\n\r\n' + self.data.get_image().tobytes() + b'\r\n\r\n')
 
