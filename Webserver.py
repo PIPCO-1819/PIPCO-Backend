@@ -4,7 +4,8 @@ import json
 import base64
 from flask_cors import CORS
 import time
-from ImageProcessing import FPS
+from ImageProcessing import FPS, THUMBNAIL_TYPE, RECORDING_TYPE
+
 # https://github.com/desertfury/flask-opencv-streaming
 
 class Webserver:
@@ -32,7 +33,7 @@ class Webserver:
                        b'Content-Type: image/jpeg\r\n\r\n' + self.data.get_image().tobytes() + b'\r\n\r\n')
 
     def get_recording(self, filename):
-        return send_from_directory("data/recordings/", filename)
+        return send_from_directory("data/recordings/", filename, mimetype="video/mp4")
 
 
     def get_mails(self):
@@ -46,7 +47,9 @@ class Webserver:
                 streamaddress = data.get('streamaddress')
                 brightness = data.get('brightness')
                 contrast = data.get('contrast')
-                return response(json.dumps(self.data.change_settings(sensitivity, brightness, contrast, streamaddress)))
+                global_notify = data.get('global_notify')
+
+                return response(json.dumps(self.data.change_settings(sensitivity, brightness, contrast, streamaddress, global_notify)))
             else:
                 return response(json.dumps(self.data.get_settings(), cls=MessageEncoder))
         except Exception:
@@ -57,7 +60,7 @@ class Webserver:
             if request.method == 'DELETE':
                 return jsonify(mail_id=self.data.remove_mail(int(mail_id)))
             else:
-                return jsonify(notify=self.data.remove_mail(int(mail_id)))
+                return jsonify(notify=self.data.toggle_mail_notify(int(mail_id)))
         except Exception:
             return Webserver.ERROR
 
@@ -107,8 +110,8 @@ class MessageEncoder(json.JSONEncoder):
 
     def default(self, o):
         if isinstance(o, Log):
-            thumbnail = THUMBNAIL_PATH + str(o.id) + ".jpg"
-
+            thumbnail = THUMBNAIL_PATH + str(o.id) + THUMBNAIL_TYPE
+            recording = "/recording/" + str(o.id) + RECORDING_TYPE
             try:
                 with open(thumbnail, "rb") as image_file:
                     encoded_string = base64.b64encode(image_file.read()).decode('utf-8')
@@ -117,6 +120,7 @@ class MessageEncoder(json.JSONEncoder):
             return {"id": o.id,
                     "message": o.message,
                     "timestamp": o.timestamp,
-                    "thumbnail": encoded_string}
+                    "thumbnail": encoded_string,
+                    "recording": recording}
         else:
             return o.__dict__

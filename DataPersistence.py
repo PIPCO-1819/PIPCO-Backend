@@ -29,7 +29,7 @@ class DataPersistence:
         if 'message' in json_object:
             return DataStorage.Log(json_object['id'], json_object['timestamp'], json_object['message'])
         elif 'sensitivity' in json_object:
-            return DataStorage.Settings(json_object['sensitivity'], json_object['brightness'], json_object['contrast'], json_object['streamaddress'])
+            return DataStorage.Settings(json_object['sensitivity'], json_object['brightness'], json_object['contrast'], json_object['streamaddress'], json_object['global_notify'])
         elif 'address' in json_object:
             return DataStorage.Mail(json_object['address'], json_object['id'], bool(json_object['notify']))
 

@@ -70,7 +70,7 @@ class PipcoDaten:
             ret = copy.copy(self.__m_settings)
             return ret
 
-    def change_settings(self, sensitivity, brightness, contrast, streamaddress):
+    def change_settings(self, sensitivity=None, brightness=None, contrast=None, streamaddress=None, global_notify=None):
         with self.__m_setting_lock:
             ret = {}
             if sensitivity is not None:
@@ -85,6 +85,9 @@ class PipcoDaten:
             if streamaddress is not None:
                 ret["streamaddress"] = streamaddress
                 self.__m_settings.streamaddress = streamaddress
+            if global_notify is not None:
+                ret["global_notify"] = global_notify
+                self.__m_settings.global_notify = bool(global_notify)
             self.m_data_persistence.save_settings(self.__m_settings)
             return ret
 
@@ -165,8 +168,9 @@ class Log:
 
 class Settings:
 
-    def __init__(self, sensitivity=0.5, brightness=0.5, contrast=0.5, streamaddress=""):
+    def __init__(self, sensitivity=0.5, brightness=0.5, contrast=0.5, streamaddress="", global_notify=True):
         self.sensitivity = sensitivity
         self.streamaddress = streamaddress
         self.brightness = brightness
         self.contrast = contrast
+        self.global_notify = global_notify

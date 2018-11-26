@@ -5,14 +5,19 @@ import CyclicList
 from DataStorage import PipcoDaten, THUMBNAIL_PATH, RECORDINGS_PATH
 from threading import Thread
 from MailClient import MailClient
+import platform
 
 FPS = 25
 MOTION_SEC = 7
+CODECS = {"Linux": "x264", "Darwin": "mp4v", "Windows": "xvid"}
+THUMBNAIL_TYPE = ".jpg"
+RECORDING_TYPE = ".mp4"
+MEDIAN_RANGE = 20
 
 class ImageProcessing(Thread):
 
     m_dataBase = PipcoDaten.get_instance()
-    m_images = CyclicList.cyclicList(20)
+    m_images = CyclicList.cyclicList(MEDIAN_RANGE)
     m_lastMotionTime = 0
 
     def __init__(self, debug):
@@ -22,7 +27,7 @@ class ImageProcessing(Thread):
         self.m_sensitivity = 0.5
         if debug:
             self.m_stream = "videosamples/sample2.mkv"
-            self.m_dataBase.change_settings(None,None,None,self.m_stream)
+            self.m_dataBase.change_settings(streamaddress=self.m_stream)
         else:
             self.m_stream = ImageProcessing.m_dataBase.get_settings().streamaddress
 
@@ -64,12 +69,13 @@ class ImageProcessing(Thread):
                         width = cap.get(cv2.CAP_PROP_FRAME_WIDTH)
                         heigth = cap.get(cv2.CAP_PROP_FRAME_HEIGHT)
 
-                        ouput_str = RECORDINGS_PATH+str(idx)+".avi"
-                        out = cv2.VideoWriter(ouput_str, cv2.VideoWriter_fourcc(*'MJPG'), 20, (int(width), int(heigth)))
+                        ouput_str = RECORDINGS_PATH + str(idx) + RECORDING_TYPE
+                        out = cv2.VideoWriter(ouput_str, cv2.VideoWriter_fourcc(*CODECS[platform.system()]), FPS, (int(width), int(heigth)))
                         print("Videocapture start")
                     else:
                         if out is not None:
                             print("Videocapture end")
+                            out.release()
                             out = None
 
                 if len(motion):
@@ -130,7 +136,7 @@ class ImageProcessing(Thread):
 
     def notify(self):
         print("Motion detected")
-        if not self.__m_debug:
+        if not self.__m_debug and self.m_dataBase.get_settings().global_notify:
             self.__m_mailclient.notify_users()
 
     def update_settings(self):
@@ -158,7 +164,7 @@ class ImageProcessing(Thread):
 
     def save_thumbnail(self, image, id):
         small = cv2.resize(image, (0, 0), fx=0.2, fy=0.2)
-        cv2.imwrite(THUMBNAIL_PATH + str(id) + '.jpg', small)
+        cv2.imwrite(THUMBNAIL_PATH + str(id) + THUMBNAIL_TYPE, small)
 
 
 
