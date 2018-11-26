@@ -1,1 +1,1 @@
-{"sensitivity": 0.3, "streamaddress": "http://192.168.0.35/cgi-bin/videostream.cgi?user=admin&pwd=admin", "brightness": 0.5, "contrast": 0.5}
+{"sensitivity": 0.3, "streamaddress": "videosamples/sample2.mkv", "brightness": 0.5, "contrast": 0.5}

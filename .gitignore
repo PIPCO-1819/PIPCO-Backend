@@ -111,3 +111,6 @@ videosamples/
 
 # pyCharm
 .idea
+
+data/recordings/
+!data/recordings/thumbnails

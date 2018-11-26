@@ -1,20 +1,19 @@
-from datetime import date
-
 import cv2
 import time
-from DataStorage import PipcoDaten, THUMBNAIL_PATH
+import numpy as np
 import CyclicList
+from DataStorage import PipcoDaten, THUMBNAIL_PATH, RECORDINGS_PATH
 from threading import Thread
 from MailClient import MailClient
-import numpy as np
 
 FPS = 25
+MOTION_SEC = 7
 
 class ImageProcessing(Thread):
 
     m_dataBase = PipcoDaten.get_instance()
-    m_images = CyclicList.cyclicList(25)
-    m_lastMotionTime = None
+    m_images = CyclicList.cyclicList(20)
+    m_lastMotionTime = 0
 
     def __init__(self, debug):
         self.__m_run = True
@@ -46,6 +45,8 @@ class ImageProcessing(Thread):
         update_counter = 0
         print("Enter Loop")
         last = time.time()
+        out = None
+
         while self.__m_run:
             ret, frame = cap.read()
         #   (read) If no frames has been grabbed (camera has been disconnected, or there are no more frames in video file),
@@ -54,14 +55,29 @@ class ImageProcessing(Thread):
                 gray_image = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
                 motion = self.check_image(gray_image)
 
-                if len(motion):
-                    cv2.drawContours(frame, motion, -1, (0,255,0), 3)
-                    if self.compare_time():
+                if self.compare_time(MOTION_SEC):
+                    if len(motion):
                         self.notify()
                         idx = self.m_dataBase.add_log()
                         self.save_thumbnail(frame, idx)
+
+                        width = cap.get(cv2.CAP_PROP_FRAME_WIDTH)
+                        heigth = cap.get(cv2.CAP_PROP_FRAME_HEIGHT)
+
+                        ouput_str = RECORDINGS_PATH+str(idx)+".avi"
+                        out = cv2.VideoWriter(ouput_str, cv2.VideoWriter_fourcc(*'MJPG'), 20, (int(width), int(heigth)))
+                        print("Videocapture start")
+                    else:
+                        if out is not None:
+                            print("Videocapture end")
+                            out = None
+
+                if len(motion):
+                    cv2.drawContours(frame, motion, -1, (0, 255, 0), 3)
                     self.m_lastMotionTime = int(round(time.time() * 1000))
 
+                if out is not None:
+                    out.write(frame)
                 ret2, jpg = cv2.imencode('.jpg', frame)
                 self.m_dataBase.set_image(jpg)
                 now = time.time()
@@ -129,14 +145,14 @@ class ImageProcessing(Thread):
     def push_front(self, image):
         self.m_images.push_front(image)
 
-#   dauer von 5 Sekunden abgelaufen
-    def compare_time(self):
+#   dauer von x Sekunden abgelaufen
+    def compare_time(self, val):
         now = int(round(time.time()*1000))
 
         if self.m_lastMotionTime is not None:
-            # vergleich ob 5 Sekunden abgelaufen sind
+            # vergleich ob x Sekunden abgelaufen sind
             delta = now-self.m_lastMotionTime
-            return (now-self.m_lastMotionTime) >= 1000*7
+            return (now-self.m_lastMotionTime) >= 1000*val
 
         return True
 
