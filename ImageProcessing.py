@@ -45,6 +45,7 @@ class ImageProcessing(Thread):
         cap = cv2.VideoCapture(self.m_stream)
         update_counter = 0
         print("Enter Loop")
+        last = time.time()
         while self.__m_run:
             ret, frame = cap.read()
         #   (read) If no frames has been grabbed (camera has been disconnected, or there are no more frames in video file),
@@ -63,6 +64,9 @@ class ImageProcessing(Thread):
 
                 ret2, jpg = cv2.imencode('.jpg', frame)
                 self.m_dataBase.set_image(jpg)
+                now = time.time()
+                print(now - last)
+                last = now
 
             elif self.__m_debug:
                 # if video ist playing, reset video
@@ -73,8 +77,6 @@ class ImageProcessing(Thread):
             if update_counter >= FPS:
                 update_counter = 0
                 self.update_settings()
-
-            cv2.waitKey(int(1000/FPS))
 
         #   verlaesst Funktion um run mit den neuen Parametern aufzurufen
             if self.m_stream_changed:
@@ -112,7 +114,8 @@ class ImageProcessing(Thread):
 
     def notify(self):
         print("Motion detected")
-        #self.__m_mailclient.notify_users()
+        if not self.__m_debug:
+            self.__m_mailclient.notify_users()
 
     def update_settings(self):
         settings = self.m_dataBase.get_settings()

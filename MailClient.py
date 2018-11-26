@@ -1,5 +1,6 @@
 from smtplib import SMTP_SSL as SMTP
 from email.mime.text import MIMEText
+import threading
 
 class MailClient:
 
@@ -17,7 +18,7 @@ class MailClient:
         message['To'] = ', '.join(recipients)
 
         try:
-            connection = SMTP("smtp." + self.provider)
+            connection = SMTP("smtp." + self.provider, timeout=30)
             connection.set_debuglevel(True)
             connection.login(self.login, self.password)
             try:
@@ -31,4 +32,5 @@ class MailClient:
         subject = "Bewegung erkannt"
         message = "Haben Sie sich gerade bewegt? Falls nein, werden Sie wahrscheinlich gerade ausgeraubt."
         recipients = [mail.address for mail in self.data.get_mails().values() if mail.notify]
-        self.__send_message(subject, message, recipients)
+        thread = threading.Thread(target=self.__send_message, args=[subject, message, recipients])
+        thread.start()

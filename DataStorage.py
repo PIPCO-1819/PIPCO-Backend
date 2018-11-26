@@ -1,12 +1,12 @@
 import datetime
-import CyclicList
 import DataPersistence
-from RWLock import RWLock
+from threading import Lock
 import copy
 
 USER = "user"
 PASSWORD = "geheim"
 THUMBNAIL_PATH = "data/recordings/thumbnails/"
+RECORDINGS_PATH = "data/recordings/"
 
 
 class PipcoDaten:
@@ -18,9 +18,9 @@ class PipcoDaten:
             raise Exception("Something fucked up - Trying to init second instance")
         else:
             self.m_data_persistence = DataPersistence.DataPersistence(self)
-            self.__m_emails_lock = RWLock()
-            self.__m_log_lock = RWLock()
-            self.__m_setting_lock = RWLock()
+            self.__m_emails_lock = Lock()
+            self.__m_log_lock = Lock()
+            self.__m_setting_lock = Lock()
             self.__m_settings = self.m_data_persistence.load_settings()
             self.__m_emails = self.m_data_persistence.load_emails()
             self.__m_log = self.m_data_persistence.load_logs()
@@ -42,57 +42,51 @@ class PipcoDaten:
         return PipcoDaten.__m_instance
 
     def toggle_mail_notify(self, id):
-        self.__m_emails_lock.writer_acquire()
-        state = not self.__m_emails[int(id)].notify
-        self.__m_emails[int(id)].notify = state
-        self.m_data_persistence.save_emails(self.__m_emails)
-        self.__m_emails_lock.writer_release()
-        return state
+        with self.__m_emails_lock:
+            state = not self.__m_emails[int(id)].notify
+            self.__m_emails[int(id)].notify = state
+            self.m_data_persistence.save_emails(self.__m_emails)
+            return state
 
     def add_mail(self, address):
-        self.__m_emails_lock.writer_acquire()
-        ret = self.__m_emails.append(Mail(address))
-        self.m_data_persistence.save_emails(self.__m_emails)
-        self.__m_emails_lock.writer_release()
-        return ret
+        with self.__m_emails_lock:
+            ret = self.__m_emails.append(Mail(address))
+            self.m_data_persistence.save_emails(self.__m_emails)
+            return ret
 
     def remove_mail(self, id):
-        self.__m_emails_lock.writer_acquire()
-        self.__m_emails.__delitem__(id)
-        self.m_data_persistence.save_emails(self.__m_emails)
-        self.__m_emails_lock.writer_release()
-        return id
+        with self.__m_emails_lock:
+            self.__m_emails.__delitem__(id)
+            self.m_data_persistence.save_emails(self.__m_emails)
+            return id
 
     def get_mails(self):
-        self.__m_emails_lock.reader_acquire()
-        ret = copy.deepcopy(self.__m_emails)
-        self.__m_emails_lock.reader_release()
-        return ret
+        with self.__m_emails_lock:
+            ret = copy.deepcopy(self.__m_emails)
+            return ret
 
     def get_settings(self):
-        self.__m_setting_lock.reader_acquire()
-        ret = copy.copy(self.__m_settings)
-        self.__m_setting_lock.reader_release()
-        return ret
+        with self.__m_setting_lock:
+            ret = copy.copy(self.__m_settings)
+            return ret
 
     def change_settings(self, sensitivity, brightness, contrast, streamaddress):
-        self.__m_setting_lock.writer_acquire()
-        ret = {}
-        if sensitivity:
-            ret["sensitivity"] = sensitivity
-            self.__m_settings.sensitivity = float(sensitivity)
-        if brightness:
-            ret["brightness"] = brightness
-            self.__m_settings.brightness = float(brightness)
-        if contrast:
-            ret["contrast"] = contrast
-            self.__m_settings.contrast = float(contrast)
-        if streamaddress:
-            ret["streamaddress"] = streamaddress
-            self.__m_settings.streamaddress = streamaddress
-        self.m_data_persistence.save_settings(self.__m_settings)
-        self.__m_setting_lock.writer_release()
-        return ret
+        with self.__m_setting_lock:
+            ret = {}
+            if sensitivity is not None:
+                ret["sensitivity"] = sensitivity
+                self.__m_settings.sensitivity = float(sensitivity)
+            if brightness is not None:
+                ret["brightness"] = brightness
+                self.__m_settings.brightness = float(brightness)
+            if contrast is not None:
+                ret["contrast"] = contrast
+                self.__m_settings.contrast = float(contrast)
+            if streamaddress is not None:
+                ret["streamaddress"] = streamaddress
+                self.__m_settings.streamaddress = streamaddress
+            self.m_data_persistence.save_settings(self.__m_settings)
+            return ret
 
     def set_image(self, image):
         self.__m_image = image
@@ -101,32 +95,28 @@ class PipcoDaten:
         return self.__m_image
 
     def get_log_page(self, page, batchsize):
-        self.__m_log_lock.reader_acquire()
-        selected = {}
-        try:
+        with self.__m_log_lock:
+            selected = {}
             for idx, key in enumerate(sorted(self.__m_log.keys(), reverse=True)[int(page)*int(batchsize):]):
                 selected[key] = copy.copy(self.__m_log[key])
                 if int(batchsize)-1 == idx:
                     return selected
             return selected
-        finally:
-            self.__m_log_lock.reader_release()
+
 
     def add_log(self):
-        self.__m_log_lock.writer_acquire()
-        idx = self.__m_log.get_free_index()
-        idx = self.__m_log.append(Log(idx))
-        self.m_data_persistence.save_logs(self.__m_log)
-        self.__m_log_lock.writer_release()
-        return idx
+        with self.__m_log_lock:
+            idx = self.__m_log.get_free_index()
+            idx = self.__m_log.append(Log(idx))
+            self.m_data_persistence.save_logs(self.__m_log)
+            return idx
 
     def check_login(self, user, password):
         return self.__m_user == user and self.__m_password == password
 
     def remove_log(self, id):
-        self.__m_log_lock.writer_acquire()
-        self.__m_log.__delitem__(id)
-        self.__m_log_lock.writer_release()
+        with self.__m_log_lock:
+            self.__m_log.__delitem__(id)
         return id
 
 class AutoIdDict(dict):
