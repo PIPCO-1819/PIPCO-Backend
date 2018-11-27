@@ -1,15 +1,11 @@
 from smtplib import SMTP_SSL as SMTP
 from email.mime.text import MIMEText
+from builtins import input
 import threading
 
 class MailClient:
 
     def __init__(self, data):
-        try:
-            input = raw_input
-        except NameError:
-            pass
-
         self.data = data
         self.login = input("mail login:")
         self.password = input("password:")

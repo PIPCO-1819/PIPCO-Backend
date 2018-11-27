@@ -69,7 +69,7 @@ class ImageProcessing(Thread):
                         heigth = cap.get(cv2.CAP_PROP_FRAME_HEIGHT)
 
                         ouput_str = RECORDINGS_PATH + str(idx) + RECORDING_TYPE
-                        out = cv2.VideoWriter(ouput_str, cv2.VideoWriter_fourcc(*CODECS[platform.system()]), FPS, (int(width), int(heigth)))
+                        out = cv2.VideoWriter(ouput_str, cv2.VideoWriter_fourcc(*'AVC1'), FPS, (int(width), int(heigth)))
                         print("Videocapture start")
                     else:
                         if out is not None:

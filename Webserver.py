@@ -111,7 +111,7 @@ class MessageEncoder(json.JSONEncoder):
     def default(self, o):
         if isinstance(o, Log):
             thumbnail = THUMBNAIL_PATH + str(o.id) + THUMBNAIL_TYPE
-            recording = "/recording/" + str(o.id) + RECORDING_TYPE
+            recording = str(o.id) + RECORDING_TYPE
             try:
                 with open(thumbnail, "rb") as image_file:
                     encoded_string = base64.b64encode(image_file.read()).decode('utf-8')
