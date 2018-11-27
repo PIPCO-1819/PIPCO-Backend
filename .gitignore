@@ -112,5 +112,6 @@ videosamples/
 # pyCharm
 .idea
 
-data/recordings/
+data/recordings/*.mp4
+data/recordings/thumbnails/*.jpg
 /data/*.json

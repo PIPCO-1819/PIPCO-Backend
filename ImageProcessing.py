@@ -9,7 +9,7 @@ import platform
 
 FPS = 25
 MOTION_SEC = 7
-CODECS = {"Linux": "x264", "Darwin": "mp4v", "Windows": "xvid"}
+CODECS = {"Linux": "x264", "Darwin": "avc1", "Windows": "AVC1"}
 THUMBNAIL_TYPE = ".jpg"
 RECORDING_TYPE = ".mp4"
 MEDIAN_RANGE = 20
@@ -69,7 +69,7 @@ class ImageProcessing(Thread):
                         heigth = cap.get(cv2.CAP_PROP_FRAME_HEIGHT)
 
                         ouput_str = RECORDINGS_PATH + str(idx) + RECORDING_TYPE
-                        out = cv2.VideoWriter(ouput_str, cv2.VideoWriter_fourcc(*'AVC1'), FPS, (int(width), int(heigth)))
+                        out = cv2.VideoWriter(ouput_str, cv2.VideoWriter_fourcc(*CODECS[platform.system()]), FPS, (int(width), int(heigth)))
                         print("Videocapture start")
                     else:
                         if out is not None:
