@@ -5,9 +5,14 @@ import threading
 class MailClient:
 
     def __init__(self, data):
+        try:
+            input = raw_input
+        except NameError:
+            pass
+
         self.data = data
-        self.login = raw_input("mail login:")
-        self.password = raw_input("password:")
+        self.login = input("mail login:")
+        self.password = input("password:")
         self.provider = "mail.de"
 
     def __send_message(self, subject, content, recipients):
