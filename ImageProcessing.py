@@ -49,7 +49,6 @@ class ImageProcessing(Thread):
         cap = cv2.VideoCapture(self.m_stream)
         update_counter = 0
         print("Enter Loop")
-        last = time.time()
         out = None
 
         while self.__m_run:
@@ -86,9 +85,6 @@ class ImageProcessing(Thread):
                     out.write(frame)
                 ret2, jpg = cv2.imencode('.jpg', frame)
                 self.m_dataBase.set_image(jpg)
-                now = time.time()
-                print(now - last)
-                last = now
 
             elif self.__m_debug:
                 # if video ist playing, reset video

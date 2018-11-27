@@ -6,8 +6,8 @@ class MailClient:
 
     def __init__(self, data):
         self.data = data
-        self.login = input("mail login:")
-        self.password = input("password:")
+        self.login = raw_input("mail login:")
+        self.password = raw_input("password:")
         self.provider = "mail.de"
 
     def __send_message(self, subject, content, recipients):
