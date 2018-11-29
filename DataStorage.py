@@ -106,6 +106,9 @@ class PipcoDaten:
                     return selected
             return selected
 
+    def get_free_index(self):
+        with self.__m_log_lock:
+            return self.__m_log.get_free_index()
 
     def add_log(self):
         with self.__m_log_lock:

@@ -19,6 +19,8 @@ class ImageProcessing(Thread):
     m_dataBase = PipcoDaten.get_instance()
     m_images = CyclicList.cyclicList(MEDIAN_RANGE)
     m_lastMotionTime = 0
+    m_idx = 0
+    m_thumbnail = None
 
     def __init__(self, debug):
         self.__m_run = True
@@ -62,7 +64,7 @@ class ImageProcessing(Thread):
                 if self.compare_time(MOTION_SEC):
                     if len(motion):
                         self.notify()
-                        idx = self.m_dataBase.add_log()
+                        idx = self.m_dataBase.get_free_index()
                         self.save_thumbnail(frame, idx)
 
                         width = cap.get(cv2.CAP_PROP_FRAME_WIDTH)
@@ -75,6 +77,7 @@ class ImageProcessing(Thread):
                         if out is not None:
                             print("Videocapture end")
                             out.release()
+                            idx = self.m_dataBase.add_log()
                             out = None
 
                 if len(motion):
