@@ -49,7 +49,7 @@ class ImageProcessing(Thread):
 
 #   Eigentliche Bildverarbeitung
     def run_imgprocessing(self):
-        cap = cv2.VideoCapture(0)
+        cap = cv2.VideoCapture(self.m_stream)
         update_counter = 0
         print("Enter Loop")
         out = None
