@@ -1,11 +1,19 @@
 import DataStorage
 import json
-import collections
+import zipfile
+import os
+import time
+
+BACKUP_OUTDATED_MINUTES = 2
 
 class DataPersistence:
 
     def __init__(self, data):
         self.data = data
+        if not os.path.exists(DataStorage.RECORDINGS_PATH):
+            os.makedirs(DataStorage.RECORDINGS_PATH)
+        if not os.path.exists(DataStorage.THUMBNAIL_PATH):
+            os.makedirs(DataStorage.THUMBNAIL_PATH)
 
     def save_settings(self,settings):
         self.save("data/settings.json", json.dumps(settings, cls=SaveEncoder))
@@ -26,11 +34,20 @@ class DataPersistence:
         return data
 
     def from_json(self, json_object):
+        error_message = 'Wrong format of {}. Please delete file or add missing attributes.'
         if 'message' in json_object:
+            if len(vars(DataStorage.Log())) != len(json_object):
+                raise AttributeError(error_message.format('logs.json'))
             return DataStorage.Log(json_object['id'], json_object['timestamp'], json_object['message'])
         elif 'sensitivity' in json_object:
-            return DataStorage.Settings(json_object['sensitivity'], json_object['brightness'], json_object['contrast'], json_object['streamaddress'], json_object['global_notify'])
+            if len(vars(DataStorage.Settings())) != len(json_object):
+                raise AttributeError(error_message.format('settings.json'))
+            return DataStorage.Settings(json_object['sensitivity'], json_object['brightness'], json_object['contrast'],
+                                        json_object['streamaddress'], json_object['global_notify'], json_object['cliplength'],
+                                        json_object['log_enabled'],json_object['max_logs'],json_object['max_storage'])
         elif 'address' in json_object:
+            if len(vars(DataStorage.Mail(""))) != len(json_object):
+                raise AttributeError(error_message.format('emails.json'))
             return DataStorage.Mail(json_object['address'], json_object['id'], bool(json_object['notify']))
 
     def load_settings(self):
@@ -57,6 +74,21 @@ class DataPersistence:
             return ret
         except FileNotFoundError:
             return
+
+    @staticmethod
+    def zip_current_data():
+        filename = "backup.zip"
+        def zipdir(path, ziph):
+            for root, dirs, files in os.walk(path):
+                for file in files:
+                    ziph.write(os.path.join(root, file))
+        if (os.path.isfile(filename) and (((time.time() - os.path.getctime(filename)) / 60) > BACKUP_OUTDATED_MINUTES)) or \
+                not os.path.isfile(filename):
+            zipf = zipfile.ZipFile(filename, 'w', zipfile.ZIP_DEFLATED)
+            zipdir('data/', zipf)
+            zipf.close()
+            return True
+        return False
 
 
 class SaveEncoder(json.JSONEncoder):

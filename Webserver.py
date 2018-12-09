@@ -5,6 +5,7 @@ import base64
 from flask_cors import CORS
 import time
 from ImageProcessing import FPS, THUMBNAIL_TYPE, RECORDING_TYPE
+from DataPersistence import DataPersistence
 
 # https://github.com/desertfury/flask-opencv-streaming
 
@@ -23,6 +24,8 @@ class Webserver:
         self.app.add_url_rule('/login', 'check_login', self.check_login, methods=["POST"])
         self.app.add_url_rule('/config', 'change_get_config', self.change_get_config, methods=["POST", "GET"])
         self.app.add_url_rule('/recording/<path:filename>', 'recording', self.get_recording, methods=["GET"])
+        self.app.add_url_rule('/backup', 'backup', self.get_backup, methods=["GET"])
+
         CORS(self.app)
         self.data = PipcoDaten.get_instance()
 
@@ -35,6 +38,10 @@ class Webserver:
     def get_recording(self, filename):
         return send_from_directory("data/recordings/", filename, mimetype="video/mp4")
 
+    def get_backup(self):
+        with self.data.m_global_lock:
+            DataPersistence.zip_current_data()
+            return send_from_directory(".", "backup.zip", mimetype="application/zip")
 
     def get_mails(self):
         return response(json.dumps(list(self.data.get_mails().values()), cls=MessageEncoder))
