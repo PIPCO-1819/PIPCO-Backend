@@ -55,8 +55,11 @@ class Webserver:
                 brightness = data.get('brightness')
                 contrast = data.get('contrast')
                 global_notify = data.get('global_notify')
-
-                return response(json.dumps(self.data.change_settings(sensitivity, brightness, contrast, streamaddress, global_notify)))
+                max_storage = data.get('max_storage')
+                max_logs = data.get('max_logs')
+                cliplength = data.get('cliplength')
+                log_enabled = data.get('log_enabled')
+                return response(json.dumps(self.data.change_settings(sensitivity, brightness, contrast, streamaddress, global_notify, log_enabled, cliplength, max_logs, max_storage)))
             else:
                 return response(json.dumps(self.data.get_settings(), cls=MessageEncoder))
         except Exception:

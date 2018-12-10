@@ -43,8 +43,8 @@ class DataPersistence:
             if len(vars(DataStorage.Settings())) != len(json_object):
                 raise AttributeError(error_message.format('settings.json'))
             return DataStorage.Settings(json_object['sensitivity'], json_object['brightness'], json_object['contrast'],
-                                        json_object['streamaddress'], json_object['global_notify'], json_object['cliplength'],
-                                        json_object['log_enabled'],json_object['max_logs'],json_object['max_storage'])
+                                        json_object['streamaddress'], json_object['global_notify'], json_object['log_enabled'],
+                                        json_object['cliplength'], json_object['max_logs'],json_object['max_storage'])
         elif 'address' in json_object:
             if len(vars(DataStorage.Mail(""))) != len(json_object):
                 raise AttributeError(error_message.format('emails.json'))
