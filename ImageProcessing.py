@@ -9,7 +9,7 @@ from MailClient import MailClient
 import platform
 
 FPS = 15
-MOTION_SEC = 7
+MOTION_SEC = 5
 CODECS = {"Linux": "x264", "Darwin": "avc1", "Windows": "AVC1"}
 THUMBNAIL_TYPE = ".jpg"
 RECORDING_TYPE = ".mp4"
@@ -17,6 +17,9 @@ MEDIAN_RANGE = 10
 
 class ImageProcessing(Thread):
 
+    m_fps = 0
+    m_is_fps_set = False
+    m_time_list = CyclicList.cyclicList(MEDIAN_RANGE)
     m_dataBase = PipcoDaten.get_instance()
     m_images = CyclicList.cyclicList(MEDIAN_RANGE)
     m_lastMotionTime = 0
@@ -56,13 +59,15 @@ class ImageProcessing(Thread):
         frame_list = []
         storage_full = False
         while self.__m_run:
-            #discard every 2nd frame to prevent buffering
+            time_start = time.time()
             cap.grab()
             ret, frame = cap.read()
         #   (read) If no frames has been grabbed (camera has been disconnected, or there are no more frames in video file),
         #   the methods return false and the functions return NULL pointer.
             if ret:
+                # Schritt 1: Farbbild zu Graubild
                 gray_image = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+                # Schritte 2-8 in check image
                 motion = self.check_image(gray_image)
 
                 if self.compare_time(MOTION_SEC):
@@ -71,9 +76,17 @@ class ImageProcessing(Thread):
                         width = cap.get(cv2.CAP_PROP_FRAME_WIDTH)
                         heigth = cap.get(cv2.CAP_PROP_FRAME_HEIGHT)
                         if not storage_full and self.settings.log_enabled:
-                            out = cv2.VideoWriter("recording.mp4", cv2.VideoWriter_fourcc(*CODECS[platform.system()]), FPS, (int(width), int(heigth)))
                             frame_list = []
+                            ouput_str = RECORDINGS_PATH + str(idx) + RECORDING_TYPE
+                            if self.m_fps is 0:
+                                out = cv2.VideoWriter(ouput_str, cv2.VideoWriter_fourcc(*CODECS[platform.system()]), FPS, (int(width), int(heigth)))
+                            else:
+                                out = cv2.VideoWriter(ouput_str, cv2.VideoWriter_fourcc(*CODECS[platform.system()]), self.m_fps, (int(width), int(heigth)))
                             print("Videocapture start")
+
+
+
+                        print("Videocapture start")
                     else:
                         if out is not None:
                             storage_full = int(self.get_size_of_folder("data/") / 2 ** 20) >= self.settings.max_storage
@@ -81,17 +94,26 @@ class ImageProcessing(Thread):
                                 self.__m_mailclient.storage_full()
                             else:
                                 idx = self.m_dataBase.add_log()
-                                output_str = RECORDINGS_PATH + str(idx) + RECORDING_TYPE
                                 self.save_thumbnail(frame_list[int(len(frame_list)/3)], idx)
-                                os.rename("recording.mp4", output_str)
                             print("Videocapture end")
                             out.release()
                             out = None
                             frame_list = []
 
                 if len(motion):
+                    #Schritt 9: Zeichne die Kanten in das neuste Frame
                     cv2.drawContours(frame, motion, -1, (0, 255, 0), 3)
                     self.m_lastMotionTime = int(round(time.time() * 1000))
+
+                    if self.m_is_fps_set is not True:
+                        self.m_time_list.push_front(time.time() - time_start)
+
+                        if self.m_time_list.get_size() == MEDIAN_RANGE:
+                            average = 0
+                            for _time in self.m_time_list.get_list():
+                                average = average+_time
+                            m_fps = 1000/(average/MEDIAN_RANGE)
+                            self.m_is_fps_set = True
 
                 if out is not None:
                     out.write(frame)
@@ -114,23 +136,31 @@ class ImageProcessing(Thread):
             if self.m_stream_changed:
                 return
 
-        #    print(datetime.datetime.now())
+            print(time.time()-time_start)
 
     def check_image(self,image):
         #old_image = ImageProcessing.m_images.get_last_image()
         image = self.apply_brightness_contrast(image, self.settings.brightness, self.settings.contrast)
+        # Schritt 2: Entfernen von Rauschen und vereinheitlichen der Zahlen (Zeitstempel Kamera)
         new_image = cv2.GaussianBlur(image,(21,21),0)
         self.push_front(new_image)
+        # Schritt 3: Berechnen des Medians der alten Bilder
         old_image = self.get_median()
 
         if old_image is None:
             return []
 
+        # Schritt 4: Subtraktion von Neues Image und Median image
         delta_frame = cv2.absdiff(new_image,old_image)
+        # Schritt 5: Gross genuger Bereiche in neuem SW image uebernehmen
         thresh_frame = cv2.threshold(delta_frame, 30, 255, cv2.THRESH_BINARY)[1]
+        # Schritt 6: Reduzieren der Flaechen
+        thresh_frame = cv2.erode(thresh_frame, None, iterations=int(10*(1-self.m_sensitivity)))
+        # Schritt 7: vergroesern der uebrigen Flaechen
         thresh_frame = cv2.erode(thresh_frame, None, iterations=int(10*(1-self.settings.sensitivity)))
         thresh_frame = cv2.dilate(thresh_frame, None, iterations=2)
 
+        # Schritt 8: Extrahieren der Kanten in eine Liste
         (_, cnts, _) = cv2.findContours(thresh_frame.copy(), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
         if len(cnts):

@@ -18,6 +18,9 @@ class cyclicList:
     def flush_list(self):
         self.__list.m_clear()
 
+    def get_size(self):
+        return len(self.__m_list)
+
 #   returns the newest image
     def get_last_image(self):
         if len(self.__m_list) != 0:
