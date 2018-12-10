@@ -77,6 +77,7 @@ class ImageProcessing(Thread):
                         heigth = cap.get(cv2.CAP_PROP_FRAME_HEIGHT)
                         if not storage_full and self.settings.log_enabled:
                             frame_list = []
+                            idx = self.m_dataBase.get_free_index()
                             ouput_str = RECORDINGS_PATH + str(idx) + RECORDING_TYPE
                             if self.m_fps is 0:
                                 out = cv2.VideoWriter(ouput_str, cv2.VideoWriter_fourcc(*CODECS[platform.system()]), FPS, (int(width), int(heigth)))
@@ -136,8 +137,6 @@ class ImageProcessing(Thread):
             if self.m_stream_changed:
                 return
 
-            print(time.time()-time_start)
-
     def check_image(self,image):
         #old_image = ImageProcessing.m_images.get_last_image()
         image = self.apply_brightness_contrast(image, self.settings.brightness, self.settings.contrast)
@@ -155,7 +154,7 @@ class ImageProcessing(Thread):
         # Schritt 5: Gross genuger Bereiche in neuem SW image uebernehmen
         thresh_frame = cv2.threshold(delta_frame, 30, 255, cv2.THRESH_BINARY)[1]
         # Schritt 6: Reduzieren der Flaechen
-        thresh_frame = cv2.erode(thresh_frame, None, iterations=int(10*(1-self.m_sensitivity)))
+        thresh_frame = cv2.erode(thresh_frame, None, iterations=int(10*(1-self.settings.sensitivity)))
         # Schritt 7: vergroesern der uebrigen Flaechen
         thresh_frame = cv2.erode(thresh_frame, None, iterations=int(10*(1-self.settings.sensitivity)))
         thresh_frame = cv2.dilate(thresh_frame, None, iterations=2)
@@ -183,6 +182,7 @@ class ImageProcessing(Thread):
     def update_settings(self):
         self.settings = self.m_dataBase.get_settings()
         if self.m_stream != self.settings.streamaddress:
+            self.m_stream = self.settings.streamaddress
             self.m_stream_changed = True
 
     def push_front(self, image):
