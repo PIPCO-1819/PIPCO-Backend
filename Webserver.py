@@ -25,9 +25,16 @@ class Webserver:
         self.app.add_url_rule('/config', 'change_get_config', self.change_get_config, methods=["POST", "GET"])
         self.app.add_url_rule('/recording/<path:filename>', 'recording', self.get_recording, methods=["GET"])
         self.app.add_url_rule('/backup', 'backup', self.get_backup, methods=["GET"])
-
+        self.app.after_request(self.add_header)
         CORS(self.app)
         self.data = PipcoDaten.get_instance()
+
+    def add_header(self, r):
+        r.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+        r.headers["Pragma"] = "no-cache"
+        r.headers["Expires"] = "0"
+        r.headers['Cache-Control'] = 'public, max-age=0'
+        return r
 
     def gen(self):
         while True:

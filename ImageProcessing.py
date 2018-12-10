@@ -8,18 +8,17 @@ import os
 from MailClient import MailClient
 import platform
 
-FPS = 15
 MOTION_SEC = 5
 CODECS = {"Linux": "x264", "Darwin": "avc1", "Windows": "AVC1"}
 THUMBNAIL_TYPE = ".jpg"
 RECORDING_TYPE = ".mp4"
-MEDIAN_RANGE = 10
+MEDIAN_RANGE = 15
 
 class ImageProcessing(Thread):
 
-    m_fps = 0
+    m_fps = 15
     m_is_fps_set = False
-    m_time_list = CyclicList.cyclicList(MEDIAN_RANGE)
+    m_time_list = []
     m_dataBase = PipcoDaten.get_instance()
     m_images = CyclicList.cyclicList(MEDIAN_RANGE)
     m_lastMotionTime = 0
@@ -60,7 +59,6 @@ class ImageProcessing(Thread):
         storage_full = False
         while self.__m_run:
             time_start = time.time()
-            cap.grab()
             ret, frame = cap.read()
         #   (read) If no frames has been grabbed (camera has been disconnected, or there are no more frames in video file),
         #   the methods return false and the functions return NULL pointer.
@@ -69,7 +67,6 @@ class ImageProcessing(Thread):
                 gray_image = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
                 # Schritte 2-8 in check image
                 motion = self.check_image(gray_image)
-
                 if self.compare_time(MOTION_SEC):
                     if len(motion):
                         self.notify()
@@ -79,15 +76,9 @@ class ImageProcessing(Thread):
                             frame_list = []
                             idx = self.m_dataBase.get_free_index()
                             ouput_str = RECORDINGS_PATH + str(idx) + RECORDING_TYPE
-                            if self.m_fps is 0:
-                                out = cv2.VideoWriter(ouput_str, cv2.VideoWriter_fourcc(*CODECS[platform.system()]), FPS, (int(width), int(heigth)))
-                            else:
-                                out = cv2.VideoWriter(ouput_str, cv2.VideoWriter_fourcc(*CODECS[platform.system()]), self.m_fps, (int(width), int(heigth)))
+                            out = cv2.VideoWriter(ouput_str, cv2.VideoWriter_fourcc(*CODECS[platform.system()]), self.m_fps, (int(width), int(heigth)))
                             print("Videocapture start")
 
-
-
-                        print("Videocapture start")
                     else:
                         if out is not None:
                             storage_full = int(self.get_size_of_folder("data/") / 2 ** 20) >= self.settings.max_storage
@@ -106,15 +97,16 @@ class ImageProcessing(Thread):
                     cv2.drawContours(frame, motion, -1, (0, 255, 0), 3)
                     self.m_lastMotionTime = int(round(time.time() * 1000))
 
-                    if self.m_is_fps_set is not True:
-                        self.m_time_list.push_front(time.time() - time_start)
+                if self.m_is_fps_set is False:
+                    self.m_time_list.append(time.time() - time_start)
 
-                        if self.m_time_list.get_size() == MEDIAN_RANGE:
-                            average = 0
-                            for _time in self.m_time_list.get_list():
-                                average = average+_time
-                            m_fps = 1000/(average/MEDIAN_RANGE)
-                            self.m_is_fps_set = True
+                    if len(self.m_time_list) == 100:
+                        sum = 0
+                        for _time in self.m_time_list:
+                            print(_time)
+                            sum = sum+_time
+                        self.m_fps = int(1/(sum/100))
+                        self.m_is_fps_set = True
 
                 if out is not None:
                     out.write(frame)
@@ -129,7 +121,7 @@ class ImageProcessing(Thread):
 
             # update settings every second
             update_counter += 1
-            if update_counter >= int(FPS/2):
+            if update_counter >= self.m_fps:
                 update_counter = 0
                 self.update_settings()
 
@@ -194,7 +186,6 @@ class ImageProcessing(Thread):
 
         if self.m_lastMotionTime is not None:
             # vergleich ob x Sekunden abgelaufen sind
-            delta = now-self.m_lastMotionTime
             return (now-self.m_lastMotionTime) >= 1000*val
 
         return True

@@ -144,10 +144,14 @@ class PipcoDaten:
         with self.__m_log_lock and self.m_global_lock:
             try:
                 os.remove(THUMBNAIL_PATH + str(id) + ImageProcessing.THUMBNAIL_TYPE)
+            except FileNotFoundError as e:
+                print(e)
+            try:
                 os.remove(RECORDINGS_PATH + str(id) + ImageProcessing.RECORDING_TYPE)
             except FileNotFoundError as e:
                 print(e)
             self.__m_log.__delitem__(id)
+            self.m_data_persistence.save_logs(self.__m_log)
         return id
 
     def get_size_of_logs(self):
