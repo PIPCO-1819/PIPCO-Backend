@@ -30,6 +30,7 @@ class ImageProcessing(Thread):
         self.__m_debug = debug
         self.__m_mailclient = MailClient(ImageProcessing.m_dataBase)
         self.settings = self.m_dataBase.get_settings()
+
         if debug:
             self.m_stream = "videosamples/sample2.mkv"
             self.m_dataBase.change_settings(streamaddress=self.m_stream)
@@ -76,7 +77,9 @@ class ImageProcessing(Thread):
                             frame_list = []
                             idx = self.m_dataBase.get_free_index()
                             ouput_str = RECORDINGS_PATH + str(idx) + RECORDING_TYPE
+
                             out = cv2.VideoWriter(ouput_str, cv2.VideoWriter_fourcc(*CODECS[platform.system()]), self.m_fps, (int(width), int(heigth)))
+
                             print("Videocapture start")
 
                     else:
@@ -103,14 +106,27 @@ class ImageProcessing(Thread):
                     if len(self.m_time_list) == 100:
                         sum = 0
                         for _time in self.m_time_list:
-                            print(_time)
                             sum = sum+_time
                         self.m_fps = int(1/(sum/100))
+                        print(self.m_fps)
                         self.m_is_fps_set = True
 
                 if out is not None:
                     out.write(frame)
                     frame_list.append(frame)
+
+                    if len(frame_list) == self.m_fps * self.m_dataBase.get_settings().cliplength:
+                        storage_full = int(self.get_size_of_folder("data/") / 2 ** 20) >= self.settings.max_storage
+                        if storage_full:
+                            self.__m_mailclient.storage_full()
+                        else:
+                            idx = self.m_dataBase.add_log()
+                            self.save_thumbnail(frame_list[int(len(frame_list)/3)], idx)
+                        print("Videocapture end")
+                        out.release()
+                        out = None
+                        frame_list = []
+
                 frame = self.apply_brightness_contrast(frame, self.settings.brightness, self.settings.contrast)
                 ret2, jpg = cv2.imencode('.jpg', frame)
                 self.m_dataBase.set_image(jpg)

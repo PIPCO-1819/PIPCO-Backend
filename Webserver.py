@@ -4,7 +4,7 @@ import json
 import base64
 from flask_cors import CORS
 import time
-from ImageProcessing import FPS, THUMBNAIL_TYPE, RECORDING_TYPE
+from ImageProcessing import THUMBNAIL_TYPE, RECORDING_TYPE
 from DataPersistence import DataPersistence
 
 # https://github.com/desertfury/flask-opencv-streaming
@@ -38,7 +38,7 @@ class Webserver:
 
     def gen(self):
         while True:
-                time.sleep(1/FPS)
+                time.sleep(1/15)
                 yield (b'--frame\r\n'
                        b'Content-Type: image/jpeg\r\n\r\n' + self.data.get_image().tobytes() + b'\r\n\r\n')
 
