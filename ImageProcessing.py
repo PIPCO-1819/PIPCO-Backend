@@ -164,7 +164,6 @@ class ImageProcessing(Thread):
         # Schritt 6: Reduzieren der Flaechen
         thresh_frame = cv2.erode(thresh_frame, None, iterations=int(10*(1-self.settings.sensitivity)))
         # Schritt 7: vergroesern der uebrigen Flaechen
-        thresh_frame = cv2.erode(thresh_frame, None, iterations=int(10*(1-self.settings.sensitivity)))
         thresh_frame = cv2.dilate(thresh_frame, None, iterations=2)
 
         # Schritt 8: Extrahieren der Kanten in eine Liste
