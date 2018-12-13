@@ -24,6 +24,8 @@ class ImageProcessing(Thread):
     m_lastMotionTime = 0
     m_idx = 0
     m_thumbnail = None
+    m_frame_list = []
+    m_out = None
 
     def __init__(self, debug):
         self.__m_run = True
@@ -55,7 +57,6 @@ class ImageProcessing(Thread):
         cap = cv2.VideoCapture(self.m_stream)
         update_counter = 0
         print("Enter Loop")
-        out = None
         frame_list = []
         storage_full = False
         while self.__m_run:
@@ -74,26 +75,19 @@ class ImageProcessing(Thread):
                         width = cap.get(cv2.CAP_PROP_FRAME_WIDTH)
                         heigth = cap.get(cv2.CAP_PROP_FRAME_HEIGHT)
                         if not storage_full and self.settings.log_enabled:
-                            frame_list = []
+                            self.m_frame_list = []
                             idx = self.m_dataBase.get_free_index()
                             ouput_str = RECORDINGS_PATH + str(idx) + RECORDING_TYPE
 
-                            out = cv2.VideoWriter(ouput_str, cv2.VideoWriter_fourcc(*CODECS[platform.system()]), self.m_fps, (int(width), int(heigth)))
+                            self.m_out = cv2.VideoWriter(ouput_str, cv2.VideoWriter_fourcc(*CODECS[platform.system()]), self.m_fps, (int(width), int(heigth)))
 
                             print("Videocapture start")
 
                     else:
-                        if out is not None:
-                            storage_full = int(self.get_size_of_folder("data/") / 2 ** 20) >= self.settings.max_storage
-                            if storage_full:
-                                self.__m_mailclient.storage_full()
-                            else:
-                                idx = self.m_dataBase.add_log()
-                                self.save_thumbnail(frame_list[int(len(frame_list)/3)], idx)
+                        if self.m_out is not None:
+                            self.storage_manager()
+                            self.reset_videocapture()
                             print("Videocapture end")
-                            out.release()
-                            out = None
-                            frame_list = []
 
                 if len(motion):
                     #Schritt 9: Zeichne die Kanten in das neuste Frame
@@ -111,21 +105,14 @@ class ImageProcessing(Thread):
                         print(self.m_fps)
                         self.m_is_fps_set = True
 
-                if out is not None:
-                    out.write(frame)
-                    frame_list.append(frame)
+                if self.m_out is not None:
+                    self.m_out.write(frame)
+                    self.m_frame_list.append(frame)
 
-                    if len(frame_list) == self.m_fps * self.m_dataBase.get_settings().cliplength:
-                        storage_full = int(self.get_size_of_folder("data/") / 2 ** 20) >= self.settings.max_storage
-                        if storage_full:
-                            self.__m_mailclient.storage_full()
-                        else:
-                            idx = self.m_dataBase.add_log()
-                            self.save_thumbnail(frame_list[int(len(frame_list)/3)], idx)
+                    if len(self.m_frame_list) == self.m_fps * self.m_dataBase.get_settings().cliplength:
+                        self.storage_manager()
+                        self.reset_videocapture()
                         print("Videocapture end")
-                        out.release()
-                        out = None
-                        frame_list = []
 
                 frame = self.apply_brightness_contrast(frame, self.settings.brightness, self.settings.contrast)
                 ret2, jpg = cv2.imencode('.jpg', frame)
@@ -239,3 +226,18 @@ class ImageProcessing(Thread):
             gamma_c = 127 * (1 - f)
             buf = cv2.addWeighted(buf, alpha_c, buf, 0, gamma_c)
         return buf
+
+    def storage_manager(self):
+        storage_full = int(self.get_size_of_folder("data/") / 2 ** 20) >= self.settings.max_storage
+        if storage_full:
+            self.__m_mailclient.storage_full()
+        else:
+            idx = self.m_dataBase.add_log()
+            self.save_thumbnail(self.m_frame_list[int(len(self.m_frame_list)/3)], idx)
+
+    def reset_videocapture(self):
+        self.m_out.release()
+        self.m_out = None
+        self.m_frame_list = []
+
+
