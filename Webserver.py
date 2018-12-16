@@ -14,6 +14,7 @@ class Webserver:
     ERROR = 'ERROR', 403
 
     def __init__(self):
+        """Setup flask server - register all possible rest enquiries"""
         self.app = Flask(__name__, static_url_path='')
         self.app.add_url_rule('/videostream', 'video_feed', self.video_feed, methods=["GET"])
         self.app.add_url_rule('/logs/<page_no>/<batch_size>', 'get_logs', self.get_logs, methods=["GET"])
@@ -37,8 +38,9 @@ class Webserver:
         return r
 
     def gen(self):
+        """Creates generator object with returning frames"""
         while True:
-                time.sleep(1/15)
+                time.sleep(1/self.data.m_stream_fps)
                 yield (b'--frame\r\n'
                        b'Content-Type: image/jpeg\r\n\r\n' + self.data.get_image().tobytes() + b'\r\n\r\n')
 
@@ -119,13 +121,15 @@ class Webserver:
                             mimetype='multipart/x-mixed-replace; boundary=frame')
         return "no images available"
 
+
 def response(val):
     return Response(response=val,
              status=200,
              mimetype="application/json")
 
-class MessageEncoder(json.JSONEncoder):
 
+class MessageEncoder(json.JSONEncoder):
+    """Encode objects and change the presentation of logs for message"""
     def default(self, o):
         if isinstance(o, Log):
             thumbnail = THUMBNAIL_PATH + str(o.id) + THUMBNAIL_TYPE

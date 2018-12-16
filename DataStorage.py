@@ -17,7 +17,7 @@ class PipcoDaten:
 
     def __init__(self):
         if self.__m_instance is not None:
-            raise Exception("Something fucked up - Trying to init second instance")
+            raise Exception("Error - Trying to init second instance")
         else:
             self.m_global_lock = RLock()
             self.m_data_persistence = DataPersistence.DataPersistence(self)
@@ -37,6 +37,7 @@ class PipcoDaten:
             self.__m_image = None
             self.__m_user = USER
             self.__m_password = PASSWORD
+            self.m_stream_fps = 30
 
     @staticmethod
     def get_instance():
@@ -159,7 +160,7 @@ class PipcoDaten:
             return len(self.__m_log)
 
 class AutoIdDict(dict):
-
+    """Dictionary with auto increment id as key"""
     def __init__(self, list=None):
         if list:
             for val in list:

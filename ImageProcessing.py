@@ -1,12 +1,12 @@
 import cv2
 import time
 import numpy as np
-import CyclicList
 from DataStorage import PipcoDaten, THUMBNAIL_PATH, RECORDINGS_PATH
 from threading import Thread
 import os
 from MailClient import MailClient
 import platform
+from collections import deque
 
 MOTION_SEC = 5
 CODECS = {"Linux": "x264", "Darwin": "avc1", "Windows": "AVC1"}
@@ -20,24 +20,18 @@ class ImageProcessing(Thread):
     m_is_fps_set = False
     m_time_list = []
     m_dataBase = PipcoDaten.get_instance()
-    m_images = CyclicList.cyclicList(MEDIAN_RANGE)
+    m_images = deque(maxlen=MEDIAN_RANGE)
     m_lastMotionTime = 0
     m_idx = 0
     m_thumbnail = None
     m_frame_list = []
     m_out = None
 
-    def __init__(self, debug):
+    def __init__(self):
         self.__m_run = True
-        self.__m_debug = debug
         self.__m_mailclient = MailClient(ImageProcessing.m_dataBase)
         self.settings = self.m_dataBase.get_settings()
-
-        if debug:
-            self.m_stream = "videosamples/sample2.mkv"
-            self.m_dataBase.change_settings(streamaddress=self.m_stream)
-        else:
-            self.m_stream = ImageProcessing.m_dataBase.get_settings().streamaddress
+        self.m_stream = self.settings.streamaddress
 
         print("init")
         super(ImageProcessing, self).__init__()
@@ -102,7 +96,8 @@ class ImageProcessing(Thread):
                         for _time in self.m_time_list:
                             sum = sum+_time
                         self.m_fps = int(1/(sum/100))
-                        print(self.m_fps)
+                        self.m_dataBase.m_stream_fps = self.m_fps
+                        print("calculated FPS: " + str(self.m_fps))
                         self.m_is_fps_set = True
 
                 if self.m_out is not None:
@@ -118,7 +113,7 @@ class ImageProcessing(Thread):
                 ret2, jpg = cv2.imencode('.jpg', frame)
                 self.m_dataBase.set_image(jpg)
 
-            elif self.__m_debug:
+            elif self.m_stream.__contains__(".mkv"):
                 # if video ist playing, reset video
                 cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
 
@@ -163,14 +158,14 @@ class ImageProcessing(Thread):
 
 
     def get_median(self):
-        if ImageProcessing.m_images.get_list():
-            image_stack = np.concatenate([im[..., None] for im in ImageProcessing.m_images.get_list()], axis=2)
+        if ImageProcessing.m_images:
+            image_stack = np.concatenate([im[..., None] for im in ImageProcessing.m_images], axis=2)
             median_array = np.median(image_stack, axis=2)
             return np.asarray(median_array, np.uint8)
 
     def notify(self):
         print("Motion detected")
-        if not self.__m_debug and self.settings.global_notify:
+        if self.settings.global_notify:
             self.__m_mailclient.notify_users()
 
     def update_settings(self):
@@ -180,7 +175,7 @@ class ImageProcessing(Thread):
             self.m_stream_changed = True
 
     def push_front(self, image):
-        self.m_images.push_front(image)
+        self.m_images.appendleft(image)
 
 #   dauer von x Sekunden abgelaufen
     def compare_time(self, val):

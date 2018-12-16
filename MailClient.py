@@ -12,6 +12,8 @@ class MailClient:
         self.provider = "mail.de"
 
     def __send_message(self, subject, content, recipients):
+        if not self.login or not self.password:
+            return
         text = content
         message = MIMEText(text, 'plain')
         message['Subject'] = subject
