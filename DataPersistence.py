@@ -74,6 +74,14 @@ class DataPersistence:
             return ret
         except FileNotFoundError:
             return
+    @staticmethod
+    def get_size_of_folder(start_path):
+        total_size = 0
+        for path, dirs, files in os.walk(start_path):
+            for f in files:
+                fp = os.path.join(path, f)
+                total_size += os.path.getsize(fp)
+        return total_size
 
     @staticmethod
     def zip_current_data():

@@ -7,23 +7,38 @@ import os
 from MailClient import MailClient
 import platform
 from collections import deque
+from DataPersistence import DataPersistence
 
 MOTION_SEC = 5
-CODECS = {"Linux": "x264", "Darwin": "avc1", "Windows": "AVC1"}
+CODECS = {"Linux": "avc1", "Darwin": "avc1", "Windows": "AVC1"}
 THUMBNAIL_TYPE = ".jpg"
 RECORDING_TYPE = ".mp4"
 MEDIAN_RANGE = 15
+FPS_CALCULATION_FRAMES = 100
+
+
+class Timer:
+
+    def __init__(self, seconds):
+        self.__m_seconds = seconds
+        self.__m_time_stamp = None
+
+    def time_has_elpsed(self):
+        if not self.__m_time_stamp:
+            return True
+        return (time.time() - self.__m_time_stamp) >= self.__m_seconds
+
+    def reset(self):
+        self.__m_time_stamp = time.time()
 
 class ImageProcessing(Thread):
 
-    m_fps = 15
+    m_fps = 30
     m_is_fps_set = False
     m_time_list = []
     m_dataBase = PipcoDaten.get_instance()
     m_images = deque(maxlen=MEDIAN_RANGE)
-    m_lastMotionTime = 0
-    m_idx = 0
-    m_thumbnail = None
+    m_last_motion_timer = Timer(MOTION_SEC)
     m_frame_list = []
     m_out = None
 
@@ -32,7 +47,7 @@ class ImageProcessing(Thread):
         self.__m_mailclient = MailClient(ImageProcessing.m_dataBase)
         self.settings = self.m_dataBase.get_settings()
         self.m_stream = self.settings.streamaddress
-
+        self.__m_storage_full = False
         print("init")
         super(ImageProcessing, self).__init__()
 
@@ -49,10 +64,8 @@ class ImageProcessing(Thread):
 #   Eigentliche Bildverarbeitung
     def run_imgprocessing(self):
         cap = cv2.VideoCapture(self.m_stream)
-        update_counter = 0
+        update_timer = Timer(1)
         print("Enter Loop")
-        frame_list = []
-        storage_full = False
         while self.__m_run:
             time_start = time.time()
             ret, frame = cap.read()
@@ -62,54 +75,52 @@ class ImageProcessing(Thread):
                 # Schritt 1: Farbbild zu Graubild
                 gray_image = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
                 # Schritte 2-8 in check image
-                motion = self.check_image(gray_image)
-                if self.compare_time(MOTION_SEC):
-                    if len(motion):
+                motions = self.get_contours_of_moved_objects(gray_image)
+
+                if len(motions):
+                    if self.m_last_motion_timer.time_has_elpsed():
                         self.notify()
                         width = cap.get(cv2.CAP_PROP_FRAME_WIDTH)
                         heigth = cap.get(cv2.CAP_PROP_FRAME_HEIGHT)
-                        if not storage_full and self.settings.log_enabled:
+                        if not self.__m_storage_full and self.settings.log_enabled:
                             self.m_frame_list = []
                             idx = self.m_dataBase.get_free_index()
                             ouput_str = RECORDINGS_PATH + str(idx) + RECORDING_TYPE
-
                             self.m_out = cv2.VideoWriter(ouput_str, cv2.VideoWriter_fourcc(*CODECS[platform.system()]), self.m_fps, (int(width), int(heigth)))
-
                             print("Videocapture start")
 
-                    else:
-                        if self.m_out is not None:
-                            self.storage_manager()
-                            self.reset_videocapture()
-                            print("Videocapture end")
-
-                if len(motion):
                     #Schritt 9: Zeichne die Kanten in das neuste Frame
-                    cv2.drawContours(frame, motion, -1, (0, 255, 0), 3)
-                    self.m_lastMotionTime = int(round(time.time() * 1000))
+                    cv2.drawContours(frame, motions, -1, (0, 255, 0), 3)
+                    if self.m_out:
+                        self.m_last_motion_timer.reset()
 
-                if self.m_is_fps_set is False:
+                # end capture if writer is still set but no motion for n seconds
+                # or clip gets too long
+                if self.m_out and (self.m_last_motion_timer.time_has_elpsed()
+                                     or len(self.m_frame_list) >= self.m_fps * self.settings.cliplength):
+                    self.storage_manager()
+                    self.reset_videocapture()
+                    print("Videocapture end")
+
+                # calculate fps if not already done
+                if not self.m_is_fps_set:
                     self.m_time_list.append(time.time() - time_start)
-
-                    if len(self.m_time_list) == 100:
+                    if len(self.m_time_list) == FPS_CALCULATION_FRAMES:
                         sum = 0
                         for _time in self.m_time_list:
                             sum = sum+_time
-                        self.m_fps = int(1/(sum/100))
+                        self.m_fps = int(1/(sum/FPS_CALCULATION_FRAMES))
                         self.m_dataBase.m_stream_fps = self.m_fps
                         print("calculated FPS: " + str(self.m_fps))
                         self.m_is_fps_set = True
 
-                if self.m_out is not None:
+                # if videocapture still set write current frame to it
+                if self.m_out:
                     self.m_out.write(frame)
                     self.m_frame_list.append(frame)
 
-                    if len(self.m_frame_list) == self.m_fps * self.m_dataBase.get_settings().cliplength:
-                        self.storage_manager()
-                        self.reset_videocapture()
-                        print("Videocapture end")
-
                 frame = self.apply_brightness_contrast(frame, self.settings.brightness, self.settings.contrast)
+
                 ret2, jpg = cv2.imencode('.jpg', frame)
                 self.m_dataBase.set_image(jpg)
 
@@ -118,21 +129,20 @@ class ImageProcessing(Thread):
                 cap.set(cv2.CAP_PROP_POS_FRAMES, 0)
 
             # update settings every second
-            update_counter += 1
-            if update_counter >= self.m_fps:
-                update_counter = 0
+            if update_timer.time_has_elpsed():
                 self.update_settings()
+                update_timer.reset()
 
         #   verlaesst Funktion um run mit den neuen Parametern aufzurufen
             if self.m_stream_changed:
                 return
 
-    def check_image(self,image):
+    def get_contours_of_moved_objects(self, image):
         #old_image = ImageProcessing.m_images.get_last_image()
         image = self.apply_brightness_contrast(image, self.settings.brightness, self.settings.contrast)
         # Schritt 2: Entfernen von Rauschen und vereinheitlichen der Zahlen (Zeitstempel Kamera)
         new_image = cv2.GaussianBlur(image,(21,21),0)
-        self.push_front(new_image)
+        self.m_images.appendleft(new_image)
         # Schritt 3: Berechnen des Medians der alten Bilder
         old_image = self.get_median()
 
@@ -156,7 +166,6 @@ class ImageProcessing(Thread):
 
         return []
 
-
     def get_median(self):
         if ImageProcessing.m_images:
             image_stack = np.concatenate([im[..., None] for im in ImageProcessing.m_images], axis=2)
@@ -166,7 +175,7 @@ class ImageProcessing(Thread):
     def notify(self):
         print("Motion detected")
         if self.settings.global_notify:
-            self.__m_mailclient.notify_users()
+            self.__m_mailclient.notify_motion_detected()
 
     def update_settings(self):
         self.settings = self.m_dataBase.get_settings()
@@ -174,30 +183,11 @@ class ImageProcessing(Thread):
             self.m_stream = self.settings.streamaddress
             self.m_stream_changed = True
 
-    def push_front(self, image):
-        self.m_images.appendleft(image)
-
-#   dauer von x Sekunden abgelaufen
-    def compare_time(self, val):
-        now = int(round(time.time()*1000))
-
-        if self.m_lastMotionTime is not None:
-            # vergleich ob x Sekunden abgelaufen sind
-            return (now-self.m_lastMotionTime) >= 1000*val
-
-        return True
 
     def save_thumbnail(self, image, id):
         small = cv2.resize(image, (0, 0), fx=0.2, fy=0.2)
         cv2.imwrite(THUMBNAIL_PATH + str(id) + THUMBNAIL_TYPE, small)
 
-    def get_size_of_folder(self, start_path):
-        total_size = 0
-        for path, dirs, files in os.walk(start_path):
-            for f in files:
-                fp = os.path.join(path, f)
-                total_size += os.path.getsize(fp)
-        return total_size
 
     #https://stackoverflow.com/questions/39308030/how-do-i-increase-the-contrast-of-an-image-in-python-opencv/41075028
     def apply_brightness_contrast(self, input_img, brightness=0, contrast=0):
@@ -223,9 +213,9 @@ class ImageProcessing(Thread):
         return buf
 
     def storage_manager(self):
-        storage_full = int(self.get_size_of_folder("data/") / 2 ** 20) >= self.settings.max_storage
-        if storage_full:
-            self.__m_mailclient.storage_full()
+        self.__m_storage_full = int(DataPersistence.get_size_of_folder("data/") / 2 ** 20) >= self.settings.max_storage
+        if self.__m_storage_full:
+            self.__m_mailclient.notify_storage_full()
         else:
             idx = self.m_dataBase.add_log()
             self.save_thumbnail(self.m_frame_list[int(len(self.m_frame_list)/3)], idx)
@@ -234,5 +224,4 @@ class ImageProcessing(Thread):
         self.m_out.release()
         self.m_out = None
         self.m_frame_list = []
-
-
+        self.m_last_motion_timer.reset()

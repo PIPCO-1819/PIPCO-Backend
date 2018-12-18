@@ -8,7 +8,7 @@ class Main:
         image_processing = ImageProcessing()
         image_processing.start()
         my_webserver = Webserver()
-        my_webserver.app.run(port=8002, host='127.0.0.1', debug=False, threaded=True)
+        my_webserver.app.run(port=8002, host='0.0.0.0', debug=False, threaded=True)
         image_processing.stop()
         image_processing.join()
 

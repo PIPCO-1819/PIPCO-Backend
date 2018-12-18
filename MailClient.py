@@ -31,14 +31,14 @@ class MailClient:
             except Exception as exc:
                 print("sending mail failed")
 
-    def notify_users(self):
+    def notify_motion_detected(self):
         subject = "Bewegung erkannt"
         message = "Haben Sie sich gerade bewegt? Falls nein, werden Sie wahrscheinlich gerade ausgeraubt."
         recipients = [mail.address for mail in self.data.get_mails().values() if mail.notify]
         thread = threading.Thread(target=self.__send_message, args=[subject, message, recipients])
         thread.start()
 
-    def storage_full(self):
+    def notify_storage_full(self):
         subject = "Speicher voll"
         message = "Es können keine weiteren Videos mehr gespeichert werden, da der von Ihnen freigegebene Speicherplatz belegt ist."
         recipients = [mail.address for mail in self.data.get_mails().values() if mail.notify]
