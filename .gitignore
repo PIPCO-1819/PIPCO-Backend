@@ -114,4 +114,7 @@ videosamples/
 
 data/recordings/*.mp4
 data/recordings/thumbnails/*.jpg
-/data/*.json
+data/*.json
+
+test/data/*.json
+backup.zip

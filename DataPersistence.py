@@ -74,6 +74,7 @@ class DataPersistence:
             return ret
         except FileNotFoundError:
             return
+
     @staticmethod
     def get_size_of_folder(start_path):
         total_size = 0

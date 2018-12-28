@@ -15,7 +15,7 @@ class Webserver:
 
     def __init__(self):
         """Setup flask server - register all possible rest enquiries"""
-        self.app = Flask(__name__, static_url_path='')
+        self.app = Flask(__name__, root_path="")
         self.app.add_url_rule('/videostream', 'video_feed', self.video_feed, methods=["GET"])
         self.app.add_url_rule('/logs/<page_no>/<batch_size>', 'get_logs', self.get_logs, methods=["GET"])
         self.app.add_url_rule('/log/<log_id>', 'delete_log', self.delete_log, methods=["DELETE"])
@@ -48,7 +48,7 @@ class Webserver:
         return send_from_directory("data/recordings/", filename, mimetype="video/mp4")
 
     def get_backup(self):
-        with self.data.m_global_lock:
+        with self.data.lock_all():
             DataPersistence.zip_current_data()
             return send_from_directory(".", "backup.zip", mimetype="application/zip")
 
@@ -107,8 +107,8 @@ class Webserver:
 
     def delete_log(self, log_id):
         try:
-            self.data.remove_log(int(log_id))
-            return jsonify(log_id=log_id)
+            id = self.data.remove_log(int(log_id))
+            return jsonify(log_id=id)
         except Exception:
             return Webserver.ERROR
 

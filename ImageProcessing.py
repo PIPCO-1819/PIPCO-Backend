@@ -168,9 +168,12 @@ class ImageProcessing(Thread):
 
     def get_median(self):
         if ImageProcessing.m_images:
-            image_stack = np.concatenate([im[..., None] for im in ImageProcessing.m_images], axis=2)
-            median_array = np.median(image_stack, axis=2)
-            return np.asarray(median_array, np.uint8)
+            try:
+                image_stack = np.concatenate([im[..., None] for im in ImageProcessing.m_images], axis=2)
+                median_array = np.median(image_stack, axis=2)
+                return np.asarray(median_array, np.uint8)
+            except ValueError:
+                return ImageProcessing.m_images[0]
 
     def notify(self):
         print("Motion detected")
@@ -182,6 +185,7 @@ class ImageProcessing(Thread):
         if self.m_stream != self.settings.streamaddress:
             self.m_stream = self.settings.streamaddress
             self.m_stream_changed = True
+            self.m_images.clear()
 
 
     def save_thumbnail(self, image, id):
