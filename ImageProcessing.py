@@ -42,9 +42,11 @@ class ImageProcessing(Thread):
     m_frame_list = []
     m_out = None
 
-    def __init__(self):
+    def __init__(self, normal = True):
         self.__m_run = True
-        self.__m_mailclient = MailClient(ImageProcessing.m_dataBase)
+        self.settings = None
+        if normal:
+            self.__m_mailclient = MailClient(ImageProcessing.m_dataBase)
         self.settings = self.m_dataBase.get_settings()
         self.m_stream = self.settings.streamaddress
         self.__m_storage_full = False
@@ -141,7 +143,7 @@ class ImageProcessing(Thread):
         #old_image = ImageProcessing.m_images.get_last_image()
         image = self.apply_brightness_contrast(image, self.settings.brightness, self.settings.contrast)
         # Schritt 2: Entfernen von Rauschen und vereinheitlichen der Zahlen (Zeitstempel Kamera)
-        new_image = cv2.GaussianBlur(image,(21,21),0)
+        new_image = cv2.GaussianBlur(image, (21, 21), 0)
         self.m_images.appendleft(new_image)
         # Schritt 3: Berechnen des Medians der alten Bilder
         old_image = self.get_median()

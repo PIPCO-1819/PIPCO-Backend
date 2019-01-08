@@ -2,7 +2,8 @@ import unittest
 
 testmodules = [
     'test_webserver',
-    'test_datastorage'
+    'test_datastorage',
+    'test_imageproc'
     ]
 
 suite = unittest.TestSuite()

@@ -3,7 +3,6 @@ from DataStorage import *
 
 THIS_DIR = os.path.dirname(os.path.abspath(__file__))
 
-
 class TestDataStorage(unittest.TestCase):
 
     @classmethod
