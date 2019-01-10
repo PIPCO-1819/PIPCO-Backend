@@ -188,6 +188,8 @@ class ImageProcessing(Thread):
             self.m_stream = self.settings.streamaddress
             self.m_stream_changed = True
             self.m_images.clear()
+            self.m_time_list = []
+            self.m_is_fps_set = False
 
 
     def save_thumbnail(self, image, id):
