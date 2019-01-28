@@ -39,6 +39,7 @@ class ImageProcessing(Thread):
     m_dataBase = PipcoDaten.get_instance()
     m_images = deque(maxlen=MEDIAN_RANGE)
     m_last_motion_timer = Timer(MOTION_SEC)
+    m_log_disabled_timer = Timer(30)
     m_frame_list = []
     m_out = None
 
@@ -80,7 +81,7 @@ class ImageProcessing(Thread):
                 motions = self.get_contours_of_moved_objects(gray_image)
 
                 if len(motions):
-                    if self.m_last_motion_timer.time_has_elpsed():
+                    if self.m_last_motion_timer.time_has_elpsed() and (self.settings.log_enabled or self.m_log_disabled_timer.time_has_elpsed()):
                         self.notify()
                         width = cap.get(cv2.CAP_PROP_FRAME_WIDTH)
                         heigth = cap.get(cv2.CAP_PROP_FRAME_HEIGHT)
@@ -90,6 +91,8 @@ class ImageProcessing(Thread):
                             ouput_str = RECORDINGS_PATH + str(idx) + RECORDING_TYPE
                             self.m_out = cv2.VideoWriter(ouput_str, cv2.VideoWriter_fourcc(*CODECS[platform.system()]), self.m_fps, (int(width), int(heigth)))
                             print("Videocapture start")
+                        elif not self.settings.log_enabled:
+                            self.m_log_disabled_timer.reset()
 
                     #Schritt 9: Zeichne die Kanten in das neuste Frame
                     cv2.drawContours(frame, motions, -1, (0, 255, 0), 3)
