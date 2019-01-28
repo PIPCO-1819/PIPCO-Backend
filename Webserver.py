@@ -86,7 +86,7 @@ class Webserver:
 
     def add_mail(self):
         try:
-            mailaddress = json.loads(request.data)['mail']
+            mailaddress = request.get_json().get('mail')
             if mailaddress:
                 ret = self.data.add_mail(mailaddress)
                 if ret != -1:
@@ -97,8 +97,9 @@ class Webserver:
 
     def check_login(self):
         try:
-            user = json.loads(request.data)['user']
-            password = json.loads(request.data)['password']
+            data = request.get_json()
+            user = data.get('user')
+            password = data.get('password')
             if self.data.check_login(user, password):
                 return jsonify(status="OK")
             return Webserver.ERROR
